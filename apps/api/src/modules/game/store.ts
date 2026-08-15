@@ -65,25 +65,3 @@ export function toPlayerPick(doc: WithId<PickDoc>): PlayerPick {
     createdAt: doc.createdAt.toISOString(),
   };
 }
-
-/**
- * The matchday every endpoint means by "now": the lowest-numbered one still
- * unresolved. Once the whole calendar has been resolved there is nothing left
- * to play, so the last matchday stays on screen with its final board instead of
- * the penka going blank.
- */
-export function selectCurrentMatchday(
-  matchdays: readonly MatchdayDoc[],
-): MatchdayDoc | undefined {
-  const unplayed = matchdays.filter((matchday) => matchday.status !== 'resolved');
-  if (unplayed.length > 0) {
-    return unplayed.reduce((current, matchday) =>
-      matchday.number < current.number ? matchday : current,
-    );
-  }
-  return matchdays.reduce<MatchdayDoc | undefined>(
-    (current, matchday) =>
-      current === undefined || matchday.number > current.number ? matchday : current,
-    undefined,
-  );
-}

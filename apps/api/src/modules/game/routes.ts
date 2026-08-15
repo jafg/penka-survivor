@@ -13,7 +13,7 @@ import {
   type Board,
   type MyEntry,
 } from '@penka/contracts';
-import { validatePick, type PickRejectionCode } from '@penka/game-engine';
+import { selectCurrentMatchday, validatePick, type PickRejectionCode } from '@penka/game-engine';
 import { ApiError } from '../../errors';
 import { isDuplicateKeyError } from '../../lib/mongo-errors';
 import { usersCollection } from '../auth/store';
@@ -30,14 +30,7 @@ import {
 } from '../penkas/store';
 import { buildBoard } from './board';
 import { nextPollInSec } from './polling';
-import {
-  ensureGameIndexes,
-  picksCollection,
-  selectCurrentMatchday,
-  toMatch,
-  toMatchday,
-  toPlayerPick,
-} from './store';
+import { ensureGameIndexes, picksCollection, toMatch, toMatchday, toPlayerPick } from './store';
 
 /** See the note in authRoutes: a plain plugin must assert its decorators itself. */
 const REQUIRED_DECORATORS = ['db', 'redis', 'authenticate'] as const;
@@ -339,12 +332,7 @@ export const gameRoutes: FastifyPluginAsync = async (instance) => {
         );
       }
 
-      await upsertPick(
-        app.db,
-        entry._id.toHexString(),
-        matchday._id,
-        request.body.teamCode,
-      );
+      await upsertPick(app.db, entry._id.toHexString(), matchday._id, request.body.teamCode);
       // The public board does not change here — it hides picks until lock — so
       // there is nothing to invalidate. The personal delta is the whole answer.
       return { myEntry: toMyEntry(entry, request.body.teamCode) };

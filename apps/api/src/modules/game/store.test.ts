@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { Value } from '@sinclair/typebox/value';
 import { MatchSchema, MatchdaySchema, PlayerPickSchema } from '@penka/contracts';
 import type { MatchDoc, MatchdayDoc } from '../penkas/store';
-import { selectCurrentMatchday, toMatch, toMatchday, toPlayerPick, type PickDoc } from './store';
+import { toMatch, toMatchday, toPlayerPick, type PickDoc } from './store';
 
 function matchdayDoc(number: number, status: MatchdayDoc['status'] = 'open'): MatchdayDoc {
   return {
@@ -83,27 +83,5 @@ describe('toPlayerPick', () => {
   });
 });
 
-describe('selectCurrentMatchday', () => {
-  it('is the lowest-numbered matchday nobody has resolved yet', () => {
-    const matchdays = [matchdayDoc(3), matchdayDoc(1, 'resolved'), matchdayDoc(2, 'locked')];
-
-    expect(selectCurrentMatchday(matchdays)?.number).toBe(2);
-  });
-
-  it('does not depend on the order the database hands them back', () => {
-    const ascending = [matchdayDoc(1), matchdayDoc(2), matchdayDoc(3)];
-
-    expect(selectCurrentMatchday(ascending)?.number).toBe(1);
-    expect(selectCurrentMatchday([...ascending].reverse())?.number).toBe(1);
-  });
-
-  it('stays on the last matchday once the whole calendar is resolved', () => {
-    const played = [matchdayDoc(2, 'resolved'), matchdayDoc(3, 'resolved'), matchdayDoc(1, 'resolved')];
-
-    expect(selectCurrentMatchday(played)?.number).toBe(3);
-  });
-
-  it('has no answer for a league whose calendar was never materialized', () => {
-    expect(selectCurrentMatchday([])).toBeUndefined();
-  });
-});
+// `selectCurrentMatchday` moved to @penka/game-engine — the back office needs the
+// same rule, and a rule lives in exactly one place. Its cases moved with it.
