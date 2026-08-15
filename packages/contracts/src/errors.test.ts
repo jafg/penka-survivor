@@ -17,6 +17,7 @@ const SPEC_CODES = [
   'on_island',
   'results_missing',
   'already_resolved',
+  'matchday_not_locked',
   'invalid_outcome',
   'invalid_profile',
   'rate_limited',

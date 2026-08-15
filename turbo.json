@@ -12,6 +12,9 @@
     "test": {
       "dependsOn": []
     },
+    "test:coverage": {
+      "outputs": ["coverage/**"]
+    },
     "test:integration": {
       "cache": false
     },

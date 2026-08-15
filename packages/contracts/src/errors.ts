@@ -21,6 +21,7 @@ export const ErrorCodes = {
   on_island: 'on_island',
   results_missing: 'results_missing',
   already_resolved: 'already_resolved',
+  matchday_not_locked: 'matchday_not_locked',
   invalid_outcome: 'invalid_outcome',
   invalid_profile: 'invalid_profile',
   rate_limited: 'rate_limited',
