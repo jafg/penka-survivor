@@ -1,0 +1,28 @@
+{
+  "name": "@penka/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.js",
+    "./eslint-vue": "./eslint-vue.js",
+    "./vitest": "./vitest.js",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/node.json": "./tsconfig/node.json",
+    "./tsconfig/vue.json": "./tsconfig/vue.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-vue": "^9.32.0",
+    "typescript-eslint": "^8.20.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.18.0",
+    "vitest": "^3.0.5"
+  }
+}
