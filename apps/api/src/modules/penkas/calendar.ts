@@ -1,14 +1,10 @@
+import { matchId, matchdayId } from '@penka/contracts';
 import type { CatalogLeague } from '../catalog/catalog';
 import type { MatchDoc, MatchdayDoc } from './store';
 
 export interface LeagueCalendar {
   matchdays: MatchdayDoc[];
   matches: MatchDoc[];
-}
-
-/** Derived, not generated: the same league always names its matchdays the same way. */
-export function matchdayId(leagueId: string, number: number): string {
-  return `${leagueId}:md${number}`;
 }
 
 /**
@@ -32,7 +28,7 @@ export function buildLeagueCalendar(entry: CatalogLeague, now: Date): LeagueCale
 
     for (const { homeTeamCode, awayTeamCode } of template.matchups) {
       matches.push({
-        _id: `${_id}:${homeTeamCode}-${awayTeamCode}`,
+        _id: matchId(_id, homeTeamCode, awayTeamCode),
         matchdayId: _id,
         leagueId,
         homeTeamCode,

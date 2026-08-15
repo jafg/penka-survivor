@@ -82,7 +82,9 @@ forge `X-Forwarded-For` to get a fresh bucket.
   it — so the second penka on a league does not duplicate matches, and whoever
   materialized first fixed the lock times for everyone. Idempotence rests on deterministic
   `_id`s (`copa-libertadores:md1`, `…:md1:RIV-BOC`) plus the unique `(leagueId, number)`
-  index; the "already materialized?" read is only a fast path.
+  index; the "already materialized?" read is only a fast path. The id builders
+  (`matchdayId`, `matchId`) live in `@penka/contracts` because the back office addresses
+  the same documents — never re-derive an id from a local template.
 - Materialized matches carry `homeTeamCode`/`awayTeamCode` — catalog codes, matching the
   contracts (see `packages/contracts/CLAUDE.md`). There is no teams collection.
 - Join codes are 4 digits, `randomInt`-uniform, and unique through the index on

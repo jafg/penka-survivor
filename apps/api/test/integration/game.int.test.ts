@@ -18,10 +18,10 @@ import {
   CurrentMatchdayResponseSchema,
   MyEntryResponseSchema,
   SubmitPickResponseSchema,
+  matchdayId,
 } from '@penka/contracts';
 import { buildApp } from '../../src/app';
 import { picksCollection } from '../../src/modules/game/store';
-import { matchdayId } from '../../src/modules/penkas/calendar';
 import {
   entriesCollection,
   matchdaysCollection,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { matchId, matchdayId } from '@penka/contracts';
 import { CATALOG, LOCK_OFFSET_MINUTES, findLeague } from '../catalog/catalog';
-import { buildLeagueCalendar, matchdayId } from './calendar';
+import { buildLeagueCalendar } from './calendar';
 
 const NOW = new Date('2026-08-15T12:00:00.000Z');
 
@@ -77,8 +78,21 @@ describe('buildLeagueCalendar', () => {
     expect(early.matchdays[0]?.lockAt).not.toEqual(late.matchdays[0]?.lockAt);
   });
 
-  it('names matchday documents after their league and number', () => {
-    expect(matchdayId('la-liga', 2)).toBe('la-liga:md2');
+  it('names its documents with the shared builders, not a local template', () => {
+    // The back office addresses these same documents by deriving their ids from
+    // @penka/contracts; a private template here would be a silent divergence.
+    const { matchdays, matches } = buildLeagueCalendar(libertadores(), NOW);
+    const first = matchdays[0];
+    const firstMatch = matches[0];
+
+    expect(first?._id).toBe(matchdayId('copa-libertadores', 1));
+    expect(firstMatch?._id).toBe(
+      matchId(
+        matchdayId('copa-libertadores', 1),
+        firstMatch?.homeTeamCode ?? '',
+        firstMatch?.awayTeamCode ?? '',
+      ),
+    );
   });
 
   it('builds a consistent calendar for every league in the catalog', () => {
