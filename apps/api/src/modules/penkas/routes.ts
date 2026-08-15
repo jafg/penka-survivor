@@ -11,10 +11,10 @@ import {
 } from '@penka/contracts';
 import type { AppConfig } from '../../config';
 import { ApiError } from '../../errors';
+import { isDuplicateKeyError } from '../../lib/mongo-errors';
 import { findLeague } from '../catalog/catalog';
 import { MAX_JOIN_CODE_ATTEMPTS, generateJoinCode, type JoinCodeGenerator } from './join-code';
 import { ensureLeagueMaterialized } from './materialize';
-import { isDuplicateKeyError } from './mongo-errors';
 import { discardPenka } from './rollback';
 import {
   ensurePenkaIndexes,

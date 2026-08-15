@@ -1,7 +1,7 @@
 import type { Db } from 'mongodb';
+import { isDuplicateKeyError } from '../../lib/mongo-errors';
 import type { CatalogLeague } from '../catalog/catalog';
 import { buildLeagueCalendar } from './calendar';
-import { isDuplicateKeyError } from './mongo-errors';
 import { matchdaysCollection, matchesCollection } from './store';
 
 /** A concurrent creator got there first — their documents are the ones we want. */

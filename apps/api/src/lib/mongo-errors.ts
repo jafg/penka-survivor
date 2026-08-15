@@ -3,9 +3,11 @@ import { MongoBulkWriteError, MongoServerError } from 'mongodb';
 const DUPLICATE_KEY = 11000;
 
 /**
- * Did this write fail *only* because the documents were already there? Both
- * writers in this module lean on unique indexes as the arbiter of a race, so
- * they need to tell "someone beat me to it" from a genuine failure.
+ * Did this write fail *only* because the documents were already there? Every
+ * writer that leans on a unique index as the arbiter of a race — registering an
+ * email, claiming a join code, materializing a calendar, joining a penka — needs
+ * to tell "someone beat me to it" from a genuine failure, so this check lives
+ * outside any one module.
  *
  * A bulk write reports one error per document, and qualifies only when every
  * one of them is a duplicate key — an empty list does NOT qualify, since a

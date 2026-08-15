@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { MongoServerError, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import {
   LoginRequestSchema,
   LoginResponseSchema,
@@ -13,6 +13,7 @@ import {
 } from '@penka/contracts';
 import type { AppConfig } from '../../config';
 import { ApiError } from '../../errors';
+import { isDuplicateKeyError } from '../../lib/mongo-errors';
 import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from '../../services/password';
 import {
   ensureAuthIndexes,
@@ -87,7 +88,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (instance
         ({ insertedId } = await usersCollection(app.db).insertOne(doc));
       } catch (error) {
         // The unique index is the race-safe duplicate check.
-        if (error instanceof MongoServerError && error.code === 11000) {
+        if (isDuplicateKeyError(error)) {
           throw new ApiError(409, 'email_taken', 'Email is already registered');
         }
         throw error;
