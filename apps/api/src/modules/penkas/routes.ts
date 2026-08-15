@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { MongoServerError, ObjectId, type Db, type WithId } from 'mongodb';
+import { ObjectId, type Db, type WithId } from 'mongodb';
 import {
   CreatePenkaRequestSchema,
   CreatePenkaResponseSchema,
@@ -14,6 +14,7 @@ import { ApiError } from '../../errors';
 import { findLeague } from '../catalog/catalog';
 import { MAX_JOIN_CODE_ATTEMPTS, generateJoinCode, type JoinCodeGenerator } from './join-code';
 import { ensureLeagueMaterialized } from './materialize';
+import { isDuplicateKeyError } from './mongo-errors';
 import {
   ensurePenkaIndexes,
   entriesCollection,
@@ -35,10 +36,6 @@ const REQUIRED_DECORATORS = ['db', 'authenticate', 'createRateLimit'] as const;
 
 /** One budget's per-request check, as returned by app.createRateLimit(). */
 type RateLimitCheck = ReturnType<FastifyInstance['createRateLimit']>;
-
-function isDuplicateKeyError(error: unknown): boolean {
-  return error instanceof MongoServerError && error.code === 11000;
-}
 
 /** The token subject is a user id; anything else means a forged or stale token. */
 function requireUserId(request: FastifyRequest): string {

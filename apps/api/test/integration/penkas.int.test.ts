@@ -226,6 +226,26 @@ describe('penkas endpoints', () => {
       ).toBe(24);
     });
 
+    it('finishes a calendar that was left half written', async () => {
+      const jose = await registerUser(app, 'jose');
+      const kira = await registerUser(app, 'kira');
+
+      await createPenka(app, jose, { leagueId: 'premier-league' });
+      // A run that inserted the matchdays and died before the matches: the
+      // league must not stay stranded with a calendar nobody can play.
+      await app.db.collection('matches').deleteMany({ leagueId: 'premier-league' });
+
+      const second = await createPenka(app, kira, { leagueId: 'premier-league' });
+
+      expect(second.statusCode).toBe(201);
+      expect(
+        await app.db.collection('matchdays').countDocuments({ leagueId: 'premier-league' }),
+      ).toBe(3);
+      expect(
+        await app.db.collection('matches').countDocuments({ leagueId: 'premier-league' }),
+      ).toBe(12); // 8 teams → 4 matchups × 3 matchdays
+    });
+
     it('locks matchday 1 two hours after the league was materialized', async () => {
       const ines = await registerUser(app, 'ines');
 

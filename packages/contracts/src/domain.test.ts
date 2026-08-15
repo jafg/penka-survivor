@@ -79,6 +79,18 @@ describe('domain schemas reject invalid payloads', () => {
     expect(Value.Check(TeamSchema, { ...fx.team, code: 'RIVERPLATE' })).toBe(false);
   });
 
+  it('keeps team codes to characters that are safe inside a derived id', () => {
+    // Storage derives document ids by joining parts with ':' and '-'
+    // (`la-liga:md1:RIV-BOC`). A code carrying either separator would make those
+    // ids ambiguous, so the code alphabet excludes them at the contract.
+    for (const code of ['RI-V', 'RI:V', 'ri v', 'RÍV']) {
+      expect(Value.Check(TeamSchema, { ...fx.team, code })).toBe(false);
+    }
+    for (const code of ['RIV', 'BOC', 'PSG', 'M1', 'ABCDE']) {
+      expect(Value.Check(TeamSchema, { ...fx.team, code })).toBe(true);
+    }
+  });
+
   it('identifies the teams in a match by their catalog code', () => {
     expect(Object.keys(MatchSchema.properties).sort()).toEqual([
       'awayTeamCode',

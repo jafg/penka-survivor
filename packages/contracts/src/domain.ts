@@ -24,8 +24,16 @@ export type Region = Static<typeof RegionSchema>;
 /**
  * Stable short code, unique within its league. The catalog is fixed data, so a
  * code — not a generated id — is how a team is referenced inside a league.
+ *
+ * The alphabet is uppercase letters and digits only: storage derives document
+ * ids by joining parts with `:` and `-` (`la-liga:md1:RIV-BOC`), so a code
+ * carrying a separator would make those ids ambiguous.
  */
-export const TeamCodeSchema = Type.String({ minLength: 2, maxLength: 5 });
+export const TeamCodeSchema = Type.String({
+  minLength: 2,
+  maxLength: 5,
+  pattern: '^[A-Z0-9]{2,5}$',
+});
 
 export const TeamSchema = StrictObject({
   code: TeamCodeSchema,
