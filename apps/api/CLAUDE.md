@@ -105,6 +105,55 @@ forge `X-Forwarded-For` to get a fresh bucket.
   `join:ip:` / `join:user:` prefixes — decorator-built limiters have no route information
   to keep their counters apart.
 
+## Game notes
+
+- Four endpoints, split by who the data belongs to. `GET /penkas/:penkaId/board` and
+  `GET /penkas/:penkaId/matchday/current` are **public and carry zero personal data**, so
+  one cached answer serves every viewer. `GET /penkas/:penkaId/me` and
+  `POST /penkas/:penkaId/picks` are authenticated and carry the personal delta
+  (`lives`, `status`, `myPick`, `usedTeams`). Nothing personal ever rides on the board.
+- **The lock gate is runtime, not schema.** `BoardPlayer.pick` is nullable in
+  `@penka/contracts`, so only `buildBoard` (`modules/game/board.ts`) can enforce "a pick
+  is secret until the matchday locks" — it drops every pick before lock however loudly
+  the caller passed one in. A `null` pick therefore means *hidden* before lock and *never
+  picked* after it; clients tell them apart with `board.isLocked`, and there is
+  deliberately no `pickHidden` flag to leak "this player has already picked".
+- The board is cached aside on `penka:{penkaId}:board` for 60s. The whole board is one
+  entry, so a cache hit is byte-identical and a poll costs a single Redis read. The
+  staleness errs safe: a board built before lock keeps hiding picks for up to a minute
+  after it, never the reverse. A pick does **not** invalidate it — pre-lock the public
+  board does not change when someone picks. An unparsable entry is discarded and rebuilt
+  rather than 500ing every viewer.
+- **Resolving the calendar always goes through the league**: load the penka, take its
+  `leagueId`, query matchdays/matches by it (matchday `_id`s are `league:mdN`, and no
+  matchday carries a `penkaId`). The current matchday is the lowest-numbered unresolved
+  one, or the highest-numbered when all are resolved. Since `kickoffAt === lockAt`, it is
+  locked when `now >= lockAt` or its status already says so.
+- A matchday that exists with **no matches is a 500 `internal`, not an empty list** — a
+  half-materialized calendar is a real failure mode, and "no hay partidos" is a lie the
+  player cannot act on. It is logged with the matchday id so an operator can find it.
+- Picks live in their own `picks` collection (`entryId`, `matchdayId`, `teamCode`,
+  `createdAt`) behind a unique `(entryId, matchdayId)` index. A player may change their
+  mind until lock: the write is an upsert, and the index is what arbitrates two
+  submissions in flight — the loser retries as a plain update, so a resubmission never
+  becomes a second document. `createdAt` tracks the pick that will be resolved, not the
+  first one attempted.
+- Every rule about whether a pick is allowed comes from `validatePick`; the route only
+  maps the engine's rejection to a status: `matchday_locked`/`on_island` → 409 (nothing
+  is wrong with the request, it is late or from an eliminated player),
+  `team_not_playing`/`team_already_used`/`validation_failed` → 422.
+- A penka the caller has not joined answers **exactly** like one that does not exist
+  (404 `penka_not_found`, same body) — membership is not something a stranger gets to
+  probe for.
+- `nextPollInSec` is server-driven and pure (`modules/game/polling.ts`): the server is the
+  only side that knows how close the lock is and how loaded the deployment is. The
+  operator profile lives in one Redis key for the whole deployment, `ops:pollingProfile`
+  (a later prompt writes it) — `live` → 2s, `slow` → 30s, and `normal` → 10s except
+  inside the last 10 minutes before lock, where it tightens to 2s. A missing or
+  unrecognized value reads as `normal`; `PollingProfileSchema` is the closed set.
+- `board.history` is `[]` until matchday resolutions exist — an empty history is the
+  truth today, not a placeholder.
+
 ## Must NOT
 
 - **Never compute game rules inline** — pick validation, elimination, resolution all come

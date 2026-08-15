@@ -26,7 +26,7 @@ export const MyEntryResponseSchema = StrictObject({
 });
 export type MyEntryResponse = Static<typeof MyEntryResponseSchema>;
 
-// GET /penkas/:penkaId/matchday — current matchday with its fixtures
+// GET /penkas/:penkaId/matchday/current — the open matchday with its fixtures
 export const CurrentMatchdayResponseSchema = StrictObject({
   matchday: MatchdaySchema,
   matches: Type.Array(MatchSchema),

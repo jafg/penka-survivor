@@ -4,6 +4,7 @@ import type { AppConfig } from './config';
 import { errorHandler, notFoundHandler } from './errors';
 import { authRoutes } from './modules/auth/routes';
 import { catalogRoutes } from './modules/catalog/routes';
+import { gameRoutes } from './modules/game/routes';
 import type { JoinCodeGenerator } from './modules/penkas/join-code';
 import { penkaRoutes } from './modules/penkas/routes';
 import { authPlugin } from './plugins/auth';
@@ -58,6 +59,8 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     config,
     generateJoinCode: options.generateJoinCode,
   });
+  // After penkaRoutes: the game reads the calendar that module materializes.
+  app.register(gameRoutes, { prefix: '/api/v1' });
 
   return app;
 }

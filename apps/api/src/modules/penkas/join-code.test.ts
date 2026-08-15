@@ -47,10 +47,16 @@ describe('generateJoinCode', () => {
     }
   });
 
-  it('never repeats itself back to back over a long run', () => {
-    const codes = draw(1_000);
+  it('does not get stuck handing out the same code twice in a row', () => {
+    const codes = draw(SAMPLES);
     const repeats = codes.filter((code, index) => index > 0 && code === codes[index - 1]);
-    expect(repeats).toHaveLength(0);
+    // A uniform generator *does* land on the same code twice in a row now and
+    // then — about twice per 20k draws — so demanding zero repeats asserts
+    // something no correct generator satisfies. What a correct one never does
+    // is get stuck: a constant generator scores 19,999 here and one that emits
+    // every code twice scores ~10,000, while a healthy one reaching 20 has
+    // probability ~1e-13.
+    expect(repeats.length).toBeLessThan(20);
   });
 });
 
