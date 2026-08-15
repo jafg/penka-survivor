@@ -15,6 +15,7 @@ import { findLeague } from '../catalog/catalog';
 import { MAX_JOIN_CODE_ATTEMPTS, generateJoinCode, type JoinCodeGenerator } from './join-code';
 import { ensureLeagueMaterialized } from './materialize';
 import { isDuplicateKeyError } from './mongo-errors';
+import { discardPenka } from './rollback';
 import {
   ensurePenkaIndexes,
   entriesCollection,
@@ -36,6 +37,14 @@ const REQUIRED_DECORATORS = ['db', 'authenticate', 'createRateLimit'] as const;
 
 /** One budget's per-request check, as returned by app.createRateLimit(). */
 type RateLimitCheck = ReturnType<FastifyInstance['createRateLimit']>;
+
+/**
+ * A settled rejection carries an unknown reason. ApiError and every driver
+ * error are Errors, so they are rethrown untouched — status code and all.
+ */
+function toThrowable(reason: unknown): Error {
+  return reason instanceof Error ? reason : new Error(String(reason));
+}
 
 /** The token subject is a user id; anything else means a forged or stale token. */
 function requireUserId(request: FastifyRequest): string {
@@ -178,26 +187,41 @@ export const penkaRoutes: FastifyPluginAsync<PenkaRoutesOptions> = async (instan
       if (league === undefined) {
         throw new ApiError(404, 'league_not_found', 'Unknown league');
       }
-      // Shared across every penka on this league, so it usually already exists.
-      await ensureLeagueMaterialized(app.db, league, new Date());
-
       // The schema fills these in, but the request type keeps them optional —
       // apply the same documented defaults rather than trusting AJV to have run.
       const settings = {
         lives: request.body.settings.lives ?? DEFAULT_PENKA_SETTINGS.lives,
         islandEnabled: request.body.settings.islandEnabled ?? DEFAULT_PENKA_SETTINGS.islandEnabled,
       };
-      const penka = await insertWithJoinCode(
-        app.db,
-        {
-          name: request.body.name,
-          leagueId: league.league.id,
-          settings,
-          createdBy: userId,
-          createdAt: new Date(),
-        },
-        nextJoinCode,
-      );
+
+      // The calendar is shared by every penka on this league (so it usually
+      // already exists) and touches different collections than the insert —
+      // neither waits on the other. allSettled rather than all: if the calendar
+      // fails after the penka landed, the handle is needed to roll it back.
+      const [materialized, created] = await Promise.allSettled([
+        ensureLeagueMaterialized(app.db, league, new Date()),
+        insertWithJoinCode(
+          app.db,
+          {
+            name: request.body.name,
+            leagueId: league.league.id,
+            settings,
+            createdBy: userId,
+            createdAt: new Date(),
+          },
+          nextJoinCode,
+        ),
+      ]);
+      if (created.status === 'rejected') {
+        // Nothing was stored, whatever the calendar did — it is idempotent and
+        // the next creator on this league picks up where it stopped.
+        throw toThrowable(created.reason);
+      }
+      const penka = created.value;
+      if (materialized.status === 'rejected') {
+        await discardPenka(app.db, request.log, penka._id);
+        throw toThrowable(materialized.reason);
+      }
 
       try {
         await ensureEntry(app.db, {
@@ -211,9 +235,7 @@ export const penkaRoutes: FastifyPluginAsync<PenkaRoutesOptions> = async (instan
         });
       } catch (error) {
         // A penka with no players would sit on a join code nobody can use.
-        await penkasCollection(app.db)
-          .deleteOne({ _id: penka._id })
-          .catch(() => undefined);
+        await discardPenka(app.db, request.log, penka._id);
         throw error;
       }
 
@@ -264,8 +286,13 @@ export const penkaRoutes: FastifyPluginAsync<PenkaRoutesOptions> = async (instan
         return { penkas: [] };
       }
 
+      // An unparsable penkaId would throw and cost this player their whole
+      // list, so a row that cannot name a penka is dropped like a missing one.
+      const penkaIds = entries.flatMap((entry) =>
+        ObjectId.isValid(entry.penkaId) ? [new ObjectId(entry.penkaId)] : [],
+      );
       const penkas = await penkasCollection(app.db)
-        .find({ _id: { $in: entries.map((entry) => new ObjectId(entry.penkaId)) } })
+        .find({ _id: { $in: penkaIds } })
         .toArray();
       const byId = new Map(penkas.map((penka) => [penka._id.toHexString(), penka]));
 

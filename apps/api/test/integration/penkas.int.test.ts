@@ -246,6 +246,32 @@ describe('penkas endpoints', () => {
       ).toBe(12); // 8 teams → 4 matchups × 3 matchdays
     });
 
+    it('leaves no penka behind when the calendar cannot be written', async () => {
+      const lena = await registerUser(app, 'lena');
+      // Reject every matchday insert, so materialization fails after the penka
+      // itself was already stored — the two now run concurrently.
+      await app.db.command({
+        collMod: 'matchdays',
+        validator: { $jsonSchema: { required: ['thisFieldNeverExists'] } },
+      });
+
+      try {
+        const response = await createPenka(app, lena, {
+          name: 'Doomed calendar',
+          leagueId: 'champions-league',
+        });
+
+        expect(response.statusCode).toBe(500);
+        // The penka would otherwise sit on a join code with no players and no
+        // calendar, invisible to every endpoint.
+        expect(await app.db.collection('penkas').countDocuments({ name: 'Doomed calendar' })).toBe(
+          0,
+        );
+      } finally {
+        await app.db.command({ collMod: 'matchdays', validator: {} });
+      }
+    });
+
     it('locks matchday 1 two hours after the league was materialized', async () => {
       const ines = await registerUser(app, 'ines');
 
@@ -405,6 +431,29 @@ describe('penkas endpoints', () => {
       const { penkas } = response.json<{ penkas: { penka: { id: string; name: string } }[] }>();
       expect(penkas.map((item) => item.penka.name)).toEqual(['Theirs', 'Mine']);
       expect(penkas[1]?.penka.id).toBe(own.json<{ penka: { id: string } }>().penka.id);
+    });
+
+    it('still lists the good penkas when one entry points nowhere', async () => {
+      const xime = await registerUser(app, 'xime');
+      await createPenka(app, xime, { name: 'Real one' });
+      // An entry whose penkaId is not an id at all — corruption, a bad manual
+      // edit, a future migration slip. One rotten row must not cost this player
+      // the rest of their list.
+      await app.db.collection('entries').insertOne({
+        penkaId: 'not-an-object-id',
+        userId: xime.userId,
+        lives: 2,
+        status: 'alive',
+        usedTeams: [],
+        points: 0,
+        createdAt: new Date(),
+      });
+
+      const response = await myPenkas(app, xime);
+
+      expect(response.statusCode).toBe(200);
+      const { penkas } = response.json<{ penkas: { penka: { name: string } }[] }>();
+      expect(penkas.map((item) => item.penka.name)).toEqual(['Real one']);
     });
 
     it('is empty for a player who has not joined anything', async () => {
