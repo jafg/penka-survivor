@@ -1,5 +1,14 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "JWT_SECRET",
+    "PORT",
+    "MONGO_URL",
+    "MONGO_DB",
+    "REDIS_URL",
+    "RATE_LIMIT_MAX",
+    "TRUST_PROXY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

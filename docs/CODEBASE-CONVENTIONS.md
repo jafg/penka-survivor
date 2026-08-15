@@ -1849,4 +1849,42 @@ untracked.)
     calls either.
 22. **The environment header for this session reported "Is a git repository: false"**, yet
     `git log` and `git status` both work in `/Users/agustinfarias/projects/penka/penka-survivor`.
+
+---
+
+## Accepted as-is
+
+Inconsistencies recorded above that are **deliberate**, not defects awaiting a fix. Anyone
+reading the ambiguity list should stop here before "unifying" them.
+
+1. **Two different 429 message wordings** (ambiguity #14): the plugin builder says
+   `Rate limit exceeded, retry in ${context.after}` (a humanized string like "1 minute"),
+   the join route says `Rate limit exceeded, retry in ${result.ttlInSeconds} seconds`.
+   Both carry code `rate_limited` and a `retry-after` header, which is what clients act on;
+   the message is human-facing prose, so a single wording would buy nothing and would mean
+   reimplementing one path's formatting inside the other.
+2. **Engine team params are plain `string` while contracts brand `TeamCodeSchema`**
+   (ambiguity #18): `validate-pick.ts:9` and `types.ts:29` take `string`, `domain.ts:32-36`
+   constrains `^[A-Z0-9]{2,5}$`. The engine validates game rules, not payload shape — the
+   code alphabet exists so derived document ids stay unambiguous, which is a storage and
+   wire concern enforced at the API boundary. Keeping the engine on `string` is what lets
+   it stay dependency-free and lets its fixtures use readable codes (`HOME`, `AWAY`,
+   `GHOST`) instead of catalog ones.
+
+### Superseded by later commits
+
+This document is a snapshot at `c56bf74`; the quotes above are left as captured. Three
+claims no longer describe the tree:
+
+- **Ambiguity #13 (duplicate-key detection has two implementations)** — resolved.
+  `isDuplicateKeyError` moved to `apps/api/src/lib/mongo-errors.ts`; `auth/routes.ts` calls
+  it instead of inlining `error.code === 11000`. §2.6's file path is now `src/lib/`.
+- **§1.4 / §1.5 `BoardPlayerSchema`** — it now carries `points` and `pick` as well as
+  `displayName` and `lives`, and `BoardSchema`'s invariant comment was rewritten in the
+  same commit: a pick is public from the moment the matchday locks, and the board builder
+  writes `null` before lock.
+- **§6.3 and not-found #8 (no env passthrough in `turbo.json`)** — resolved.
+  `globalPassThroughEnv` now lists `JWT_SECRET`, `PORT`, `MONGO_URL`, `MONGO_DB`,
+  `REDIS_URL`, `RATE_LIMIT_MAX`, `TRUST_PROXY` (the exact set `apps/api/src/config.ts`
+  reads), so `pnpm dev --filter @penka/api` boots from exported shell env.
     Section 7 reports the actual command output.
