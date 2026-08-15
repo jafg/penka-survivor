@@ -1,17 +1,21 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../src/app';
+import { makeTestConfig, startInfra, type TestInfra } from './harness';
 
 describe('GET /health', () => {
+  let infra: TestInfra;
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    app = buildApp();
+    infra = await startInfra();
+    app = buildApp({ config: makeTestConfig(infra) });
     await app.ready();
   });
 
   afterAll(async () => {
     await app.close();
+    await infra.stop();
   });
 
   it('returns { status: "ok" }', async () => {

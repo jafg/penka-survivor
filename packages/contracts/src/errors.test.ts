@@ -7,6 +7,7 @@ const SPEC_CODES = [
   'email_taken',
   'unauthorized',
   'forbidden',
+  'not_found',
   'penka_not_found',
   'invalid_join_code',
   'join_code_space_exhausted',

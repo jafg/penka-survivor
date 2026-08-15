@@ -48,7 +48,7 @@ export const RefreshResponseSchema = StrictObject({
 });
 export type RefreshResponse = Static<typeof RefreshResponseSchema>;
 
-// GET /auth/me
+// GET /me
 export const MeResponseSchema = StrictObject({
   user: UserSchema,
 });
