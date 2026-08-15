@@ -4,6 +4,8 @@ import type { AppConfig } from './config';
 import { errorHandler, notFoundHandler } from './errors';
 import { authRoutes } from './modules/auth/routes';
 import { catalogRoutes } from './modules/catalog/routes';
+import type { JoinCodeGenerator } from './modules/penkas/join-code';
+import { penkaRoutes } from './modules/penkas/routes';
 import { authPlugin } from './plugins/auth';
 import { mongoPlugin } from './plugins/mongo';
 import { rateLimitPlugin } from './plugins/rate-limit';
@@ -12,6 +14,8 @@ import { redisPlugin } from './plugins/redis';
 export interface BuildAppOptions {
   config: AppConfig;
   logger?: boolean;
+  /** Seam for tests that need deterministic join codes; production uses the default. */
+  generateJoinCode?: JoinCodeGenerator;
 }
 
 /**
@@ -49,6 +53,11 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   app.register(authRoutes, { prefix: '/api/v1', config });
   app.register(catalogRoutes, { prefix: '/api/v1' });
+  app.register(penkaRoutes, {
+    prefix: '/api/v1',
+    config,
+    generateJoinCode: options.generateJoinCode,
+  });
 
   return app;
 }

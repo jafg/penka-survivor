@@ -26,7 +26,7 @@ listing every problem.
 | `MONGO_URL`      | `mongodb://127.0.0.1:27017`  | matches `pnpm infra:up`                  |
 | `MONGO_DB`       | `penka`                      |                                          |
 | `REDIS_URL`      | `redis://127.0.0.1:6379`     | matches `pnpm infra:up`                  |
-| `RATE_LIMIT_MAX` | `10`                         | per minute per IP on register/login      |
+| `RATE_LIMIT_MAX` | `10`                         | per minute on register, login, join      |
 | `TRUST_PROXY`    | `false`                      | `true`, a hop count, or an IP/CIDR list  |
 
 Token lifetimes are policy, not env: access JWT 15m, refresh token 7d.
@@ -72,6 +72,36 @@ forge `X-Forwarded-For` to get a fresh bucket.
 - `src/modules/catalog/catalog.test.ts` sweeps the whole catalog (contract validation, code
   uniqueness, every team paired exactly once per matchday, no pairing repeated). Editing the
   hardcoded data means keeping that green.
+
+## Penkas notes
+
+- Three endpoints, all authenticated: `POST /api/v1/penkas`, `POST /api/v1/penkas/join`,
+  `GET /api/v1/me/penkas`.
+- **Matchdays and matches belong to a league, not to a penka.** The first penka created on
+  a league materializes its calendar (`materialize.ts`) and every penka after that reuses
+  it — so the second penka on a league does not duplicate matches, and whoever
+  materialized first fixed the lock times for everyone. Idempotence rests on deterministic
+  `_id`s (`copa-libertadores:md1`, `…:md1:RIV-BOC`) plus the unique `(leagueId, number)`
+  index; the "already materialized?" read is only a fast path.
+- Join codes are 4 digits, `randomInt`-uniform, and unique through the index on
+  `penkas.joinCode` — never a read-then-write check. Five collisions in a row means the
+  space is full: 503 `join_code_space_exhausted`. The 10,000-code ceiling is a deliberate,
+  documented MVP trade-off (see `join-code.ts`); the production path is 6 alphanumeric
+  characters. `buildApp({ generateJoinCode })` injects the generator so tests can force
+  collisions.
+- Unknown and malformed join codes get the **same** 404 `invalid_join_code`, byte for byte
+  — hence `JoinPenkaRequestSchema` stays loose, since a 400 from schema validation would
+  tell a guesser their code was at least well formed.
+- Joining is idempotent: `$setOnInsert` under the unique `(penkaId, userId)` index, so a
+  double-click returns the existing entry instead of resetting lives. The creator is just
+  the penka's first entry, so "joining" your own penka is a no-op that returns it.
+- `POST /penkas/join` carries **two** independent budgets, per IP and per user, so neither
+  rotating IPs nor rotating logins buys extra guesses against the small code space. They
+  use `app.createRateLimit` rather than `app.rateLimit`: a `rateLimit()` hook flags the
+  request as limited and every later one on the same route returns without counting, so
+  the second budget would silently never apply. Their Redis keys carry explicit
+  `join:ip:` / `join:user:` prefixes — decorator-built limiters have no route information
+  to keep their counters apart.
 
 ## Must NOT
 
