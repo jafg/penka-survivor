@@ -78,11 +78,18 @@ export const MatchOutcomeSchema = Type.Union([
 ]);
 export type MatchOutcome = Static<typeof MatchOutcomeSchema>;
 
+/**
+ * A materialized fixture. Teams are named by their catalog `code`, not by a
+ * generated id: the catalog is fixed data and owns team identity, so there are
+ * no team documents to point at. Codes are unique within a league, and a match
+ * always belongs to exactly one league, so the pair identifies a team without
+ * ambiguity.
+ */
 export const MatchSchema = StrictObject({
   id: IdSchema,
   matchdayId: IdSchema,
-  homeTeamId: IdSchema,
-  awayTeamId: IdSchema,
+  homeTeamCode: TeamCodeSchema,
+  awayTeamCode: TeamCodeSchema,
   kickoffAt: IsoDateTimeSchema,
   outcome: Type.Union([MatchOutcomeSchema, Type.Null()]),
 });
@@ -118,7 +125,8 @@ export type User = Static<typeof UserSchema>;
 // ── Penkas & entries ───────────────────────────────────────────────────────
 
 export const PenkaSettingsSchema = StrictObject({
-  lives: Type.Integer({ minimum: 1 }),
+  /** 1–3: enough to survive a bad matchday, few enough that a penka still ends. */
+  lives: Type.Integer({ minimum: 1, maximum: 3 }),
   islandEnabled: Type.Boolean(),
 });
 export type PenkaSettings = Static<typeof PenkaSettingsSchema>;
@@ -142,7 +150,8 @@ export const EntrySchema = StrictObject({
   userId: IdSchema,
   lives: Type.Integer({ minimum: 0 }),
   status: EntryStatusSchema,
-  usedTeams: Type.Array(IdSchema),
+  /** Catalog codes of the teams this entry has already spent (see MatchSchema). */
+  usedTeams: Type.Array(TeamCodeSchema),
   points: Type.Integer({ minimum: 0 }),
 });
 export type Entry = Static<typeof EntrySchema>;
@@ -152,7 +161,8 @@ export const PlayerPickSchema = StrictObject({
   id: IdSchema,
   entryId: IdSchema,
   matchdayId: IdSchema,
-  teamId: IdSchema,
+  /** The team backed this matchday, as a catalog code (see MatchSchema). */
+  teamCode: TeamCodeSchema,
   createdAt: IsoDateTimeSchema,
 });
 export type PlayerPick = Static<typeof PlayerPickSchema>;
@@ -204,7 +214,7 @@ export type Board = Static<typeof BoardSchema>;
 export const MyEntrySchema = StrictObject({
   lives: Type.Integer({ minimum: 0 }),
   status: EntryStatusSchema,
-  myPick: Type.Union([IdSchema, Type.Null()]),
-  usedTeams: Type.Array(IdSchema),
+  myPick: Type.Union([TeamCodeSchema, Type.Null()]),
+  usedTeams: Type.Array(TeamCodeSchema),
 });
 export type MyEntry = Static<typeof MyEntrySchema>;

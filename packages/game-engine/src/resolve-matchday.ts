@@ -9,14 +9,14 @@ export interface ResolveMatchdayInput {
   settings: PenkaSettings;
 }
 
-function findTeamMatch(matches: readonly Match[], teamId: string): Match | undefined {
-  return matches.find((match) => match.homeTeamId === teamId || match.awayTeamId === teamId);
+function findTeamMatch(matches: readonly Match[], teamCode: string): Match | undefined {
+  return matches.find((match) => match.homeTeamCode === teamCode || match.awayTeamCode === teamCode);
 }
 
-function isWin(match: Match, teamId: string): boolean {
+function isWin(match: Match, teamCode: string): boolean {
   return (
-    (match.outcome === 'home' && match.homeTeamId === teamId) ||
-    (match.outcome === 'away' && match.awayTeamId === teamId)
+    (match.outcome === 'home' && match.homeTeamCode === teamCode) ||
+    (match.outcome === 'away' && match.awayTeamCode === teamCode)
   );
 }
 
@@ -37,11 +37,11 @@ function islandEffect(
   if (!settings.islandEnabled || pick === undefined) {
     return base;
   }
-  const match = findTeamMatch(matches, pick.teamId);
+  const match = findTeamMatch(matches, pick.teamCode);
   if (match === undefined) {
     return base;
   }
-  return { ...base, pointsDelta: isWin(match, pick.teamId) ? 1 : 0, teamConsumed: pick.teamId };
+  return { ...base, pointsDelta: isWin(match, pick.teamCode) ? 1 : 0, teamConsumed: pick.teamCode };
 }
 
 function aliveLossEffect(entry: Entry, teamConsumed: string | null): EntryEffect {
@@ -65,23 +65,23 @@ function aliveEffect(
   if (pick === undefined) {
     return aliveLossEffect(entry, null);
   }
-  const match = findTeamMatch(matches, pick.teamId);
+  const match = findTeamMatch(matches, pick.teamCode);
   if (match === undefined) {
     // Pick for a team not playing this matchday: counts as a missed pick,
     // and the team is not consumed.
     return aliveLossEffect(entry, null);
   }
-  if (isWin(match, pick.teamId)) {
+  if (isWin(match, pick.teamCode)) {
     return {
       entryId: entry.id,
       livesDelta: 0,
       pointsDelta: 1,
       newLives: entry.lives,
       newStatus: 'alive',
-      teamConsumed: pick.teamId,
+      teamConsumed: pick.teamCode,
     };
   }
-  return aliveLossEffect(entry, pick.teamId);
+  return aliveLossEffect(entry, pick.teamCode);
 }
 
 /**

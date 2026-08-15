@@ -17,8 +17,8 @@ export function buildMatch(overrides: Partial<Match> = {}): Match {
   return {
     id: 'match-1',
     matchdayId: 'md-1',
-    homeTeamId: 'team-home',
-    awayTeamId: 'team-away',
+    homeTeamCode: 'HOME',
+    awayTeamCode: 'AWAY',
     kickoffAt: '2026-08-21T19:00:00.000Z',
     outcome: 'home',
     ...overrides,
@@ -43,7 +43,7 @@ export function buildPick(overrides: Partial<PlayerPick> = {}): PlayerPick {
     id: 'pick-1',
     entryId: 'entry-1',
     matchdayId: 'md-1',
-    teamId: 'team-home',
+    teamCode: 'HOME',
     createdAt: '2026-08-20T12:00:00.000Z',
     ...overrides,
   };

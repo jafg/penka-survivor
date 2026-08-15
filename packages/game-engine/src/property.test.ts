@@ -24,8 +24,8 @@ function randomScenario(seed: number) {
     matches.push(
       buildMatch({
         id: `match-${i}`,
-        homeTeamId: `team-${2 * i}`,
-        awayTeamId: `team-${2 * i + 1}`,
+        homeTeamCode: `T${2 * i}`,
+        awayTeamCode: `T${2 * i + 1}`,
         outcome: OUTCOMES[int(3)],
       }),
     );
@@ -46,7 +46,7 @@ function randomScenario(seed: number) {
     );
     if (rand() < 0.8) {
       picks.push(
-        buildPick({ id: `pick-${i}`, entryId: `entry-${i}`, teamId: `team-${int(2 * matchCount)}` }),
+        buildPick({ id: `pick-${i}`, entryId: `entry-${i}`, teamCode: `T${int(2 * matchCount)}` }),
       );
     }
   }

@@ -1,5 +1,12 @@
 import { Type, type Static } from '@sinclair/typebox';
-import { BoardSchema, IdSchema, MatchSchema, MatchdaySchema, MyEntrySchema } from '../domain';
+import {
+  BoardSchema,
+  IdSchema,
+  MatchSchema,
+  MatchdaySchema,
+  MyEntrySchema,
+  TeamCodeSchema,
+} from '../domain';
 import { StrictObject } from '../strict';
 
 export const PenkaParamsSchema = StrictObject({
@@ -26,9 +33,9 @@ export const CurrentMatchdayResponseSchema = StrictObject({
 });
 export type CurrentMatchdayResponse = Static<typeof CurrentMatchdayResponseSchema>;
 
-// POST /penkas/:penkaId/picks
+// POST /penkas/:penkaId/picks — the team is named by catalog code (see MatchSchema)
 export const SubmitPickRequestSchema = StrictObject({
-  teamId: IdSchema,
+  teamCode: TeamCodeSchema,
 });
 export type SubmitPickRequest = Static<typeof SubmitPickRequestSchema>;
 

@@ -42,16 +42,17 @@ export const fixtureTemplate = {
 };
 
 /**
- * A materialized team id. Catalog teams are identified by their stable `code`;
- * once a fixture template is materialized into a penka, teams get real ids.
+ * A catalog team code. Teams are identified by their stable, league-scoped
+ * `code` everywhere — matches, picks and used-team lists all carry codes, never
+ * a generated id.
  */
-export const teamId = 'team-1';
+export const teamCode = 'RIV';
 
 export const match = {
   id: 'match-1',
   matchdayId: 'matchday-1',
-  homeTeamId: 'team-1',
-  awayTeamId: 'team-2',
+  homeTeamCode: 'RIV',
+  awayTeamCode: 'BOC',
   kickoffAt: '2026-08-21T19:00:00.000Z',
   outcome: null,
 };
@@ -88,7 +89,7 @@ export const entry = {
   userId: 'user-1',
   lives: 2,
   status: 'alive',
-  usedTeams: ['team-1'],
+  usedTeams: ['RIV'],
   points: 3,
 };
 
@@ -96,7 +97,7 @@ export const pick = {
   id: 'pick-1',
   entryId: 'entry-1',
   matchdayId: 'matchday-1',
-  teamId: 'team-1',
+  teamCode: 'RIV',
   createdAt: '2026-08-20T10:00:00.000Z',
 };
 
@@ -125,8 +126,8 @@ export const board = {
 export const myEntry = {
   lives: 2,
   status: 'alive',
-  myPick: 'team-1',
-  usedTeams: ['team-1'],
+  myPick: 'RIV',
+  usedTeams: ['RIV'],
 };
 
 export const tokens = { accessToken: 'access.token.jwt', refreshToken: 'refresh.token.jwt' };

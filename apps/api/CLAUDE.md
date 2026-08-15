@@ -83,6 +83,8 @@ forge `X-Forwarded-For` to get a fresh bucket.
   materialized first fixed the lock times for everyone. Idempotence rests on deterministic
   `_id`s (`copa-libertadores:md1`, `…:md1:RIV-BOC`) plus the unique `(leagueId, number)`
   index; the "already materialized?" read is only a fast path.
+- Materialized matches carry `homeTeamCode`/`awayTeamCode` — catalog codes, matching the
+  contracts (see `packages/contracts/CLAUDE.md`). There is no teams collection.
 - Join codes are 4 digits, `randomInt`-uniform, and unique through the index on
   `penkas.joinCode` — never a read-then-write check. Five collisions in a row means the
   space is full: 503 `join_code_space_exhausted`. The 10,000-code ceiling is a deliberate,

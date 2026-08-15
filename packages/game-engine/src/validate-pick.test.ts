@@ -11,7 +11,7 @@ function baseInput() {
     entry: buildEntry(),
     matchday: buildMatchday(),
     matches: [buildMatch()],
-    teamId: 'team-home',
+    teamCode: 'HOME',
     now: BEFORE_LOCK,
     settings: buildSettings(),
   };
@@ -23,7 +23,7 @@ describe('validatePick', () => {
   });
 
   it('accepts picking the away side of a match', () => {
-    expect(validatePick({ ...baseInput(), teamId: 'team-away' })).toEqual({ ok: true });
+    expect(validatePick({ ...baseInput(), teamCode: 'AWAY' })).toEqual({ ok: true });
   });
 
   it('accepts an island entry picking when the island is enabled', () => {
@@ -62,9 +62,9 @@ describe('validatePick', () => {
       const input = {
         ...baseInput(),
         now: AFTER_LOCK,
-        entry: buildEntry({ status: 'island', lives: 0, usedTeams: ['team-home'] }),
+        entry: buildEntry({ status: 'island', lives: 0, usedTeams: ['HOME'] }),
         settings: buildSettings({ islandEnabled: false }),
-        teamId: 'team-unknown',
+        teamCode: 'UNKN',
       };
       expect(validatePick(input)).toEqual({ ok: false, code: 'matchday_locked' });
     });
@@ -83,9 +83,9 @@ describe('validatePick', () => {
     it('wins over team rejections', () => {
       const input = {
         ...baseInput(),
-        entry: buildEntry({ status: 'island', lives: 0, usedTeams: ['team-home'] }),
+        entry: buildEntry({ status: 'island', lives: 0, usedTeams: ['HOME'] }),
         settings: buildSettings({ islandEnabled: false }),
-        teamId: 'team-unknown',
+        teamCode: 'UNKN',
       };
       expect(validatePick(input)).toEqual({ ok: false, code: 'on_island' });
     });
@@ -93,7 +93,7 @@ describe('validatePick', () => {
 
   describe('team_not_playing', () => {
     it('rejects a team with no match this matchday', () => {
-      const input = { ...baseInput(), teamId: 'team-elsewhere' };
+      const input = { ...baseInput(), teamCode: 'ELSE' };
       expect(validatePick(input)).toEqual({ ok: false, code: 'team_not_playing' });
     });
 
@@ -105,8 +105,8 @@ describe('validatePick', () => {
     it('wins over team_already_used', () => {
       const input = {
         ...baseInput(),
-        entry: buildEntry({ usedTeams: ['team-elsewhere'] }),
-        teamId: 'team-elsewhere',
+        entry: buildEntry({ usedTeams: ['ELSE'] }),
+        teamCode: 'ELSE',
       };
       expect(validatePick(input)).toEqual({ ok: false, code: 'team_not_playing' });
     });
@@ -135,7 +135,7 @@ describe('validatePick', () => {
 
   describe('team_already_used', () => {
     it('rejects repeating a team the entry already consumed', () => {
-      const input = { ...baseInput(), entry: buildEntry({ usedTeams: ['team-home'] }) };
+      const input = { ...baseInput(), entry: buildEntry({ usedTeams: ['HOME'] }) };
       expect(validatePick(input)).toEqual({ ok: false, code: 'team_already_used' });
     });
   });

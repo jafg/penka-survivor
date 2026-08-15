@@ -38,7 +38,7 @@ describe('resolveMatchday', () => {
           pointsDelta: 1,
           newLives: 2,
           newStatus: 'alive',
-          teamConsumed: 'team-home',
+          teamConsumed: 'HOME',
         },
       ]);
       expect(outcome.eliminatedEntryIds).toEqual([]);
@@ -48,13 +48,13 @@ describe('resolveMatchday', () => {
       const outcome = effectsOf(
         baseInput({
           matches: [buildMatch({ outcome: 'away' })],
-          picks: [buildPick({ teamId: 'team-away' })],
+          picks: [buildPick({ teamCode: 'AWAY' })],
         }),
       );
       expect(outcome.effects[0]).toMatchObject({
         livesDelta: 0,
         pointsDelta: 1,
-        teamConsumed: 'team-away',
+        teamConsumed: 'AWAY',
       });
     });
 
@@ -65,7 +65,7 @@ describe('resolveMatchday', () => {
         pointsDelta: 0,
         newLives: 1,
         newStatus: 'alive',
-        teamConsumed: 'team-home',
+        teamConsumed: 'HOME',
       });
     });
 
@@ -73,13 +73,13 @@ describe('resolveMatchday', () => {
       const outcome = effectsOf(
         baseInput({
           matches: [buildMatch({ outcome: 'home' })],
-          picks: [buildPick({ teamId: 'team-away' })],
+          picks: [buildPick({ teamCode: 'AWAY' })],
         }),
       );
       expect(outcome.effects[0]).toMatchObject({
         livesDelta: -1,
         newLives: 1,
-        teamConsumed: 'team-away',
+        teamConsumed: 'AWAY',
       });
     });
 
@@ -98,13 +98,13 @@ describe('resolveMatchday', () => {
       const outcome = effectsOf(
         baseInput({
           picks: [
-            buildPick({ id: 'p-first', teamId: 'team-home' }),
-            buildPick({ id: 'p-second', teamId: 'team-away' }),
+            buildPick({ id: 'p-first', teamCode: 'HOME' }),
+            buildPick({ id: 'p-second', teamCode: 'AWAY' }),
           ],
           matches: [buildMatch({ outcome: 'home' })],
         }),
       );
-      expect(outcome.effects[0]).toMatchObject({ pointsDelta: 1, teamConsumed: 'team-home' });
+      expect(outcome.effects[0]).toMatchObject({ pointsDelta: 1, teamConsumed: 'HOME' });
     });
 
     it("a pick for another matchday does not count as this matchday's pick", () => {
@@ -113,7 +113,7 @@ describe('resolveMatchday', () => {
     });
 
     it('a pick for a team not playing counts as a missed pick and consumes no team', () => {
-      const outcome = effectsOf(baseInput({ picks: [buildPick({ teamId: 'team-ghost' })] }));
+      const outcome = effectsOf(baseInput({ picks: [buildPick({ teamCode: 'GHOST' })] }));
       expect(outcome.effects[0]).toMatchObject({ livesDelta: -1, teamConsumed: null });
     });
   });
@@ -180,7 +180,7 @@ describe('resolveMatchday', () => {
         pointsDelta: 1,
         newLives: 0,
         newStatus: 'island',
-        teamConsumed: 'team-home',
+        teamConsumed: 'HOME',
       });
     });
 
@@ -196,7 +196,7 @@ describe('resolveMatchday', () => {
         livesDelta: 0,
         pointsDelta: 0,
         newStatus: 'island',
-        teamConsumed: 'team-home',
+        teamConsumed: 'HOME',
       });
     });
 
@@ -214,7 +214,7 @@ describe('resolveMatchday', () => {
       const outcome = effectsOf(
         baseInput({
           entries: [islander],
-          picks: [buildPick({ entryId: 'entry-isla', teamId: 'team-ghost' })],
+          picks: [buildPick({ entryId: 'entry-isla', teamCode: 'GHOST' })],
         }),
       );
       expect(outcome.effects[0]).toMatchObject({ pointsDelta: 0, teamConsumed: null });
@@ -239,7 +239,7 @@ describe('resolveMatchday', () => {
         baseInput({
           matches: [
             buildMatch(),
-            buildMatch({ id: 'match-2', homeTeamId: 'team-c', awayTeamId: 'team-d', outcome: null }),
+            buildMatch({ id: 'match-2', homeTeamCode: 'CC', awayTeamCode: 'DD', outcome: null }),
           ],
         }),
       );
@@ -283,7 +283,7 @@ describe('resolveMatchday', () => {
             buildEntry({ id: 'e-out', lives: 1 }),
             buildEntry({ id: 'e-isla', status: 'island', lives: 0 }),
           ],
-          picks: [buildPick({ id: 'p1', entryId: 'e-win', teamId: 'team-home' })],
+          picks: [buildPick({ id: 'p1', entryId: 'e-win', teamCode: 'HOME' })],
           matches: [buildMatch({ outcome: 'home' })],
         }),
       );

@@ -60,7 +60,7 @@ describe('domain schemas reject invalid payloads', () => {
   it('rejects extra fields (additionalProperties: false)', () => {
     expect(Value.Check(TeamSchema, { ...fx.team, stadium: 'Monumental' })).toBe(false);
     expect(Value.Check(EntrySchema, { ...fx.entry, isAdmin: true })).toBe(false);
-    expect(Value.Check(BoardSchema, { ...fx.board, myPick: 'team-1' })).toBe(false);
+    expect(Value.Check(BoardSchema, { ...fx.board, myPick: fx.teamCode })).toBe(false);
     expect(
       Value.Check(PenkaSchema, {
         ...fx.penka,
@@ -77,6 +77,29 @@ describe('domain schemas reject invalid payloads', () => {
   it('requires a stable short team code', () => {
     expect(Value.Check(TeamSchema, { ...fx.team, code: 'R' })).toBe(false);
     expect(Value.Check(TeamSchema, { ...fx.team, code: 'RIVERPLATE' })).toBe(false);
+  });
+
+  it('identifies the teams in a match by their catalog code', () => {
+    expect(Object.keys(MatchSchema.properties).sort()).toEqual([
+      'awayTeamCode',
+      'homeTeamCode',
+      'id',
+      'kickoffAt',
+      'matchdayId',
+      'outcome',
+    ]);
+    // A generated id is not a code: a match points straight at the catalog, so
+    // the shape of the value is what says which world it belongs to.
+    expect(
+      Value.Check(MatchSchema, { ...fx.match, homeTeamCode: '6a80b60ffda322125df55e5f' }),
+    ).toBe(false);
+  });
+
+  it('records picks and used teams as catalog codes', () => {
+    expect(Value.Check(PlayerPickSchema, { ...fx.pick, teamCode: 'R' })).toBe(false);
+    expect(Value.Check(EntrySchema, { ...fx.entry, usedTeams: ['RIVERPLATE'] })).toBe(false);
+    expect(Value.Check(MyEntrySchema, { ...fx.myEntry, usedTeams: ['RIVERPLATE'] })).toBe(false);
+    expect(Value.Check(MyEntrySchema, { ...fx.myEntry, myPick: 'RIVERPLATE' })).toBe(false);
   });
 
   it('only allows league region america|europe|world', () => {
@@ -156,6 +179,17 @@ describe('domain schemas reject invalid payloads', () => {
   it('requires penka settings lives >= 1', () => {
     expect(
       Value.Check(PenkaSchema, { ...fx.penka, settings: { lives: 0, islandEnabled: true } }),
+    ).toBe(false);
+  });
+
+  it('caps penka settings lives at 3', () => {
+    for (const lives of [1, 2, 3]) {
+      expect(
+        Value.Check(PenkaSchema, { ...fx.penka, settings: { lives, islandEnabled: true } }),
+      ).toBe(true);
+    }
+    expect(
+      Value.Check(PenkaSchema, { ...fx.penka, settings: { lives: 4, islandEnabled: true } }),
     ).toBe(false);
   });
 });

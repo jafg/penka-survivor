@@ -25,7 +25,7 @@ export interface EntryEffect {
   pointsDelta: 0 | 1;
   newLives: number;
   newStatus: EntryStatus;
-  /** Team to append to the entry's usedTeams, or null when no valid pick was played. */
+  /** Team code to append to the entry's usedTeams, or null when no valid pick was played. */
   teamConsumed: string | null;
 }
 

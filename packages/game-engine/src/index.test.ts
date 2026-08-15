@@ -23,13 +23,13 @@ describe('public API (barrel)', () => {
 
     expect(isoToEpochMs(matchday.lockAt)).toBeTypeOf('number');
     expect(
-      validatePick({ entry, matchday, matches, teamId: 'team-home', now: '2026-08-21T18:00:00Z', settings }),
+      validatePick({ entry, matchday, matches, teamCode: 'HOME', now: '2026-08-21T18:00:00Z', settings }),
     ).toEqual({ ok: true });
 
     const result = resolveMatchday({
       matchday: buildMatchday({ status: 'locked' }),
       entries: [entry],
-      picks: [buildPick({ teamId: 'team-away' })],
+      picks: [buildPick({ teamCode: 'AWAY' })],
       matches,
       settings,
     });

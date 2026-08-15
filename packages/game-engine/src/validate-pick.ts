@@ -6,7 +6,7 @@ export interface ValidatePickInput {
   entry: Entry;
   matchday: Matchday;
   matches: readonly Match[];
-  teamId: string;
+  teamCode: string;
   /** The caller's clock as an ISO-8601 instant — the engine never reads the system clock. */
   now: string;
   settings: PenkaSettings;
@@ -22,7 +22,7 @@ export interface ValidatePickInput {
  * island disabled, in which case they are out of the game entirely.
  */
 export function validatePick(input: ValidatePickInput): PickValidation {
-  const { entry, matchday, matches, teamId, now, settings } = input;
+  const { entry, matchday, matches, teamCode, now, settings } = input;
 
   if (matchday.status !== 'open') {
     return { ok: false, code: 'matchday_locked' };
@@ -41,12 +41,12 @@ export function validatePick(input: ValidatePickInput): PickValidation {
   const playing = matches.some(
     (match) =>
       match.matchdayId === matchday.id &&
-      (match.homeTeamId === teamId || match.awayTeamId === teamId),
+      (match.homeTeamCode === teamCode || match.awayTeamCode === teamCode),
   );
   if (!playing) {
     return { ok: false, code: 'team_not_playing' };
   }
-  if (entry.usedTeams.includes(teamId)) {
+  if (entry.usedTeams.includes(teamCode)) {
     return { ok: false, code: 'team_already_used' };
   }
   return { ok: true };
