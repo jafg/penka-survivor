@@ -147,8 +147,10 @@ forge `X-Forwarded-For` to get a fresh bucket.
   probe for.
 - `nextPollInSec` is server-driven and pure (`modules/game/polling.ts`): the server is the
   only side that knows how close the lock is and how loaded the deployment is. The
-  operator profile lives in one Redis key for the whole deployment, `ops:pollingProfile`
-  (a later prompt writes it) — `live` → 2s, `slow` → 30s, and `normal` → 10s except
+  operator profile lives in one Redis key for the whole deployment,
+  `POLLING_PROFILE_KEY` from `@penka/contracts` (`ops:pollingProfile`) — this app only
+  reads it, `@penka/backoffice-api` writes it, and neither owns the name. `live` → 2s,
+  `slow` → 30s, and `normal` → 10s except
   inside the last 10 minutes before lock, where it tightens to 2s. A missing or
   unrecognized value reads as `normal`; `PollingProfileSchema` is the closed set.
 - `board.history` is `[]` until matchday resolutions exist — an empty history is the

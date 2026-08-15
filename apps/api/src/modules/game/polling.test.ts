@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PollingProfile } from '@penka/contracts';
-import { NEAR_LOCK_MS, nextPollInSec, toPollingProfile } from './polling';
+import { NEAR_LOCK_MS, nextPollInSec } from './polling';
 
 const LOCK_AT = new Date('2026-08-21T18:45:00.000Z');
 
@@ -9,25 +9,8 @@ function clockBeforeLock(minutes: number): Date {
   return new Date(LOCK_AT.getTime() - minutes * 60_000);
 }
 
-describe('toPollingProfile', () => {
-  it('reads back every profile the contract allows', () => {
-    expect(toPollingProfile('live')).toBe('live');
-    expect(toPollingProfile('normal')).toBe('normal');
-    expect(toPollingProfile('slow')).toBe('slow');
-  });
-
-  it('falls back to normal when no operator has set a cadence', () => {
-    expect(toPollingProfile(null)).toBe('normal');
-  });
-
-  it('falls back to normal for a value outside the contract', () => {
-    // 'degraded' is a plausible name that PollingProfileSchema does not carry:
-    // a stale back office writing it must not brick the board.
-    expect(toPollingProfile('degraded')).toBe('normal');
-    expect(toPollingProfile('')).toBe('normal');
-    expect(toPollingProfile('LIVE')).toBe('normal');
-  });
-});
+// `toPollingProfile` moved to @penka/contracts with POLLING_PROFILE_KEY (the back
+// office writes what this app reads); its cases live in contracts/src/ops.test.ts.
 
 describe('nextPollInSec', () => {
   const cases: { profile: PollingProfile; minutesToLock: number; expected: number; why: string }[] =

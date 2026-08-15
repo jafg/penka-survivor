@@ -8,7 +8,13 @@ import {
 } from '../domain';
 import { StrictObject } from '../strict';
 
-/** Board polling cadence profiles an operator can set per penka. */
+/**
+ * Board polling cadence profiles an operator can set for the DEPLOYMENT, not
+ * for one penka: the profile is a load valve ("how hard may clients hammer us
+ * right now"). Editorial speed-up needs no operator — a board tightens itself
+ * inside the last minutes before its lock. See POLLING_PROFILE_KEY for the one
+ * key it is stored under and for the per-penka design that was rejected.
+ */
 export const PollingProfileSchema = Type.Union([
   Type.Literal('live'),
   Type.Literal('normal'),
@@ -67,7 +73,7 @@ export const ResolveMatchdayResponseSchema = StrictObject({
 });
 export type ResolveMatchdayResponse = Static<typeof ResolveMatchdayResponseSchema>;
 
-// PUT /admin/penkas/:penkaId/polling-profile
+// PUT /admin/v1/polling-profile — deployment-wide, so the path carries no penka
 export const SetPollingProfileRequestSchema = StrictObject({
   profile: PollingProfileSchema,
 });

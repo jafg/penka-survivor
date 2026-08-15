@@ -1,12 +1,4 @@
-import { Value } from '@sinclair/typebox/value';
-import { PollingProfileSchema, type PollingProfile } from '@penka/contracts';
-
-/**
- * Where the back office will publish the cadence (a later prompt writes it).
- * One key for the whole deployment: the profile answers "how hard may clients
- * hammer us right now", which is an operational question, not a per-penka one.
- */
-export const POLLING_PROFILE_KEY = 'ops:pollingProfile';
+import type { PollingProfile } from '@penka/contracts';
 
 /**
  * Seconds between board polls per profile. `slow` is the contract's third
@@ -17,15 +9,6 @@ const POLL_SECONDS: Record<PollingProfile, number> = { live: 2, normal: 10, slow
 
 /** Last stretch before lock: picks land by the second, so normal speeds up. */
 export const NEAR_LOCK_MS = 10 * 60_000;
-
-/**
- * Whatever the back office wrote, narrowed to the contract. A missing key means
- * nobody has set a cadence; an unreadable one means the writer disagrees with
- * PollingProfileSchema, and neither is worth failing a public board over.
- */
-export function toPollingProfile(raw: string | null): PollingProfile {
-  return Value.Check(PollingProfileSchema, raw) ? raw : 'normal';
-}
 
 export interface NextPollInput {
   profile: PollingProfile;

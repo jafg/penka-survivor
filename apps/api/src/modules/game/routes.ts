@@ -5,9 +5,11 @@ import {
   BoardResponseSchema,
   CurrentMatchdayResponseSchema,
   MyEntryResponseSchema,
+  POLLING_PROFILE_KEY,
   PenkaParamsSchema,
   SubmitPickRequestSchema,
   SubmitPickResponseSchema,
+  toPollingProfile,
   type Board,
   type MyEntry,
 } from '@penka/contracts';
@@ -27,7 +29,7 @@ import {
   type PenkaDoc,
 } from '../penkas/store';
 import { buildBoard } from './board';
-import { POLLING_PROFILE_KEY, nextPollInSec, toPollingProfile } from './polling';
+import { nextPollInSec } from './polling';
 import {
   ensureGameIndexes,
   picksCollection,

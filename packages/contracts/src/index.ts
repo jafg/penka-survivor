@@ -1,6 +1,7 @@
 export * from './errors';
 export * from './domain';
 export * from './health';
+export * from './ops';
 export * from './api/auth';
 export * from './api/catalog';
 export * from './api/penkas';

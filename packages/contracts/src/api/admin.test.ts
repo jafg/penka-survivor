@@ -60,6 +60,15 @@ describe('admin schemas', () => {
     expect(Value.Check(SetPollingProfileRequestSchema, { profile: 'turbo' })).toBe(false);
   });
 
+  it('scopes the polling profile to the deployment, never to one penka', () => {
+    // PUT /admin/v1/polling-profile writes a single Redis key for everyone, so a
+    // penka rides in neither the path nor the body — an operator who thinks they
+    // are slowing down one competition must be told, not silently obeyed.
+    expect(
+      Value.Check(SetPollingProfileRequestSchema, { profile: 'slow', penkaId: fx.penka.id }),
+    ).toBe(false);
+  });
+
   it('resolve response only acknowledges queued work', () => {
     expect(
       Value.Check(ResolveMatchdayResponseSchema, { queued: false, matchdayId: fx.matchday.id }),
