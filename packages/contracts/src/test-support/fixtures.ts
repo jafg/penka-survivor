@@ -9,16 +9,43 @@ export function omit<T extends object, K extends keyof T>(source: T, key: K): Om
   return copy as Omit<T, K>;
 }
 
-export const team = { id: 'team-1', name: 'River Plate', shortCode: 'RIV' };
+export const team = { code: 'RIV', name: 'River Plate', country: 'Argentina' };
 
-export const league = { id: 'league-1', name: 'Liga Profesional', season: '2026' };
+export const league = {
+  id: 'league-1',
+  name: 'Liga Profesional',
+  region: 'america',
+  season: '2026',
+};
+
+export const leagueSummary = {
+  id: 'league-1',
+  name: 'Liga Profesional',
+  region: 'america',
+  teamCount: 8,
+};
 
 export const fixtureTemplate = {
-  id: 'template-1',
   leagueId: 'league-1',
-  matchday: 1,
-  lockAtOffsetMinutes: -15,
+  matchdays: [
+    {
+      number: 1,
+      lockAtOffsetMinutes: 120,
+      matchups: [{ homeTeamCode: 'RIV', awayTeamCode: 'BOC' }],
+    },
+    {
+      number: 2,
+      lockAtOffsetMinutes: 1560,
+      matchups: [{ homeTeamCode: 'BOC', awayTeamCode: 'RIV' }],
+    },
+  ],
 };
+
+/**
+ * A materialized team id. Catalog teams are identified by their stable `code`;
+ * once a fixture template is materialized into a penka, teams get real ids.
+ */
+export const teamId = 'team-1';
 
 export const match = {
   id: 'match-1',

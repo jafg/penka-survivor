@@ -13,26 +13,59 @@ export const EmailSchema = Type.String({ pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+
 
 // ── Catalog ────────────────────────────────────────────────────────────────
 
+/** The axis the catalog is browsed by. */
+export const RegionSchema = Type.Union([
+  Type.Literal('america'),
+  Type.Literal('europe'),
+  Type.Literal('world'),
+]);
+export type Region = Static<typeof RegionSchema>;
+
+/**
+ * Stable short code, unique within its league. The catalog is fixed data, so a
+ * code — not a generated id — is how a team is referenced inside a league.
+ */
+export const TeamCodeSchema = Type.String({ minLength: 2, maxLength: 5 });
+
 export const TeamSchema = StrictObject({
-  id: IdSchema,
+  code: TeamCodeSchema,
   name: Type.String({ minLength: 1 }),
-  shortCode: Type.String({ minLength: 2, maxLength: 5 }),
+  /** Omitted for national teams, which are their own country. */
+  country: Type.Optional(Type.String({ minLength: 1 })),
 });
 export type Team = Static<typeof TeamSchema>;
 
 export const LeagueSchema = StrictObject({
   id: IdSchema,
   name: Type.String({ minLength: 1 }),
+  region: RegionSchema,
   season: Type.String({ minLength: 1 }),
 });
 export type League = Static<typeof LeagueSchema>;
 
-/** Per-matchday template: when picks lock relative to the first kickoff. */
+/** One scheduled pairing, by team code within the league. */
+export const FixtureMatchupSchema = StrictObject({
+  homeTeamCode: TeamCodeSchema,
+  awayTeamCode: TeamCodeSchema,
+});
+export type FixtureMatchup = Static<typeof FixtureMatchupSchema>;
+
+export const FixtureTemplateMatchdaySchema = StrictObject({
+  number: Type.Integer({ minimum: 1 }),
+  /** Minutes AFTER materialization, never a calendar date — see FixtureTemplateSchema. */
+  lockAtOffsetMinutes: Type.Integer({ minimum: 0 }),
+  matchups: Type.Array(FixtureMatchupSchema, { minItems: 1 }),
+});
+export type FixtureTemplateMatchday = Static<typeof FixtureTemplateMatchdaySchema>;
+
+/**
+ * A league's fixture skeleton. Lock times are RELATIVE offsets from the moment
+ * the template is materialized into a penka, not fixed dates: a demo seeded at
+ * any hour of any day still opens with matchday 1 pickable and locking soon.
+ */
 export const FixtureTemplateSchema = StrictObject({
-  id: IdSchema,
   leagueId: IdSchema,
-  matchday: Type.Integer({ minimum: 1 }),
-  lockAtOffsetMinutes: Type.Integer(),
+  matchdays: Type.Array(FixtureTemplateMatchdaySchema, { minItems: 1 }),
 });
 export type FixtureTemplate = Static<typeof FixtureTemplateSchema>;
 

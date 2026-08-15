@@ -50,6 +50,29 @@ forge `X-Forwarded-For` to get a fresh bucket.
   `rateLimit`) at boot, so registering it before its plugins fails loudly instead of
   leaving login unthrottled or crashing cryptically.
 
+## Catalog notes
+
+- The competition catalog is **hardcoded TypeScript** (`src/modules/catalog/data.ts`), not a
+  database: six leagues across three regions, assembled once at module load and served
+  from memory. The endpoints are public — no auth, no rate limiting.
+- Team codes are the identity of a team inside its league: keep them stable and unique per
+  league (the same code may legitimately appear in another league). National teams carry no
+  `country` — they are one.
+- Each league ships one `FixtureTemplate` with 3 matchdays; a matchday pairs every team
+  exactly once, built by the circle-method round robin in `schedule.ts`. A league therefore
+  needs an even number of teams, and `buildRoundRobin` throws at boot if that is violated.
+- **Lock times are relative offsets, not dates**: matchday 1 locks 120 minutes after the
+  template is materialized into a penka, matchday 2 at 1560 (+26h), matchday 3 at 3000
+  (+50h). That keeps the demo repeatable — seed at any hour of any day and matchday 1 is
+  always open for two hours, so nothing goes stale before a presentation.
+- `GET /api/v1/catalog/leagues` takes an optional `?region=america|europe|world`; an
+  unknown region is a 400 `validation_failed` from the querystring schema. An unknown
+  league id is a 404 `league_not_found` — the generic `not_found` is only for unroutable
+  paths.
+- `src/modules/catalog/catalog.test.ts` sweeps the whole catalog (contract validation, code
+  uniqueness, every team paired exactly once per matchday, no pairing repeated). Editing the
+  hardcoded data means keeping that green.
+
 ## Must NOT
 
 - **Never compute game rules inline** — pick validation, elimination, resolution all come

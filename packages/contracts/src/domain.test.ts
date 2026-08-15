@@ -69,6 +69,52 @@ describe('domain schemas reject invalid payloads', () => {
     ).toBe(false);
   });
 
+  it('makes a team country optional (national teams are their own country)', () => {
+    expect(Value.Check(TeamSchema, fx.omit(fx.team, 'country'))).toBe(true);
+    expect(Value.Check(TeamSchema, { ...fx.team, country: '' })).toBe(false);
+  });
+
+  it('requires a stable short team code', () => {
+    expect(Value.Check(TeamSchema, { ...fx.team, code: 'R' })).toBe(false);
+    expect(Value.Check(TeamSchema, { ...fx.team, code: 'RIVERPLATE' })).toBe(false);
+  });
+
+  it('only allows league region america|europe|world', () => {
+    for (const region of ['america', 'europe', 'world']) {
+      expect(Value.Check(LeagueSchema, { ...fx.league, region })).toBe(true);
+    }
+    expect(Value.Check(LeagueSchema, { ...fx.league, region: 'asia' })).toBe(false);
+  });
+
+  it('only allows lock offsets that point forward from materialization', () => {
+    const [first] = fx.fixtureTemplate.matchdays;
+    expect(
+      Value.Check(FixtureTemplateSchema, {
+        ...fx.fixtureTemplate,
+        matchdays: [{ ...first, lockAtOffsetMinutes: -15 }],
+      }),
+    ).toBe(false);
+  });
+
+  it('requires a fixture template to schedule at least one matchday of matchups', () => {
+    expect(Value.Check(FixtureTemplateSchema, { ...fx.fixtureTemplate, matchdays: [] })).toBe(
+      false,
+    );
+    const [first] = fx.fixtureTemplate.matchdays;
+    expect(
+      Value.Check(FixtureTemplateSchema, {
+        ...fx.fixtureTemplate,
+        matchdays: [{ ...first, matchups: [] }],
+      }),
+    ).toBe(false);
+    expect(
+      Value.Check(FixtureTemplateSchema, {
+        ...fx.fixtureTemplate,
+        matchdays: [{ ...first, matchups: [{ homeTeamCode: 'RIV' }] }],
+      }),
+    ).toBe(false);
+  });
+
   it('only allows matchday status open|locked|resolved', () => {
     for (const status of ['open', 'locked', 'resolved']) {
       expect(Value.Check(MatchdaySchema, { ...fx.matchday, status })).toBe(true);

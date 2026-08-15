@@ -18,7 +18,7 @@ describe('game schemas', () => {
     expect(
       Value.Check(CurrentMatchdayResponseSchema, { matchday: fx.matchday, matches: [fx.match] }),
     ).toBe(true);
-    expect(Value.Check(SubmitPickRequestSchema, { teamId: fx.team.id })).toBe(true);
+    expect(Value.Check(SubmitPickRequestSchema, { teamId: fx.teamId })).toBe(true);
     expect(Value.Check(SubmitPickResponseSchema, { myEntry: fx.myEntry })).toBe(true);
   });
 
@@ -54,7 +54,7 @@ describe('game schemas', () => {
   });
 
   it('rejects extra fields', () => {
-    expect(Value.Check(SubmitPickRequestSchema, { teamId: fx.team.id, lives: 99 })).toBe(false);
+    expect(Value.Check(SubmitPickRequestSchema, { teamId: fx.teamId, lives: 99 })).toBe(false);
     expect(Value.Check(PenkaParamsSchema, { penkaId: fx.penka.id, admin: true })).toBe(false);
   });
 });

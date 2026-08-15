@@ -13,6 +13,8 @@ export const ErrorCodes = {
   forbidden: 'forbidden',
   /** Generic 404: an unroutable path or method. Specific misses have their own codes. */
   not_found: 'not_found',
+  /** Unknown league id in the catalog. */
+  league_not_found: 'league_not_found',
   penka_not_found: 'penka_not_found',
   invalid_join_code: 'invalid_join_code',
   join_code_space_exhausted: 'join_code_space_exhausted',

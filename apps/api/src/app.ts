@@ -3,6 +3,7 @@ import { HealthResponseSchema, type HealthResponse } from '@penka/contracts';
 import type { AppConfig } from './config';
 import { errorHandler, notFoundHandler } from './errors';
 import { authRoutes } from './modules/auth/routes';
+import { catalogRoutes } from './modules/catalog/routes';
 import { authPlugin } from './plugins/auth';
 import { mongoPlugin } from './plugins/mongo';
 import { rateLimitPlugin } from './plugins/rate-limit';
@@ -47,6 +48,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   );
 
   app.register(authRoutes, { prefix: '/api/v1', config });
+  app.register(catalogRoutes, { prefix: '/api/v1' });
 
   return app;
 }
