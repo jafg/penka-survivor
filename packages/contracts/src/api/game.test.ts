@@ -14,6 +14,7 @@ describe('game schemas', () => {
   it('accepts valid payloads', () => {
     expect(Value.Check(PenkaParamsSchema, { penkaId: fx.penka.id })).toBe(true);
     expect(Value.Check(BoardResponseSchema, { board: fx.board })).toBe(true);
+    expect(Value.Check(BoardResponseSchema, { board: fx.lockedBoard })).toBe(true);
     expect(Value.Check(MyEntryResponseSchema, { myEntry: fx.myEntry })).toBe(true);
     expect(
       Value.Check(CurrentMatchdayResponseSchema, { matchday: fx.matchday, matches: [fx.match] }),

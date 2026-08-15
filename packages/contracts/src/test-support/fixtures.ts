@@ -110,7 +110,11 @@ export const resolution = {
   islandEntryIds: ['entry-3'],
 };
 
-export const boardPlayer = { displayName: 'Ana', lives: 2 };
+/**
+ * A board player while the matchday is still open: `pick` is null because picks
+ * only become public at lock (see BoardPlayerSchema).
+ */
+export const boardPlayer = { displayName: 'Ana', lives: 2, points: 3, pick: null };
 
 export const board = {
   matchday: 2,
@@ -118,9 +122,22 @@ export const board = {
   isLocked: false,
   isResolved: false,
   alive: [boardPlayer],
-  island: [{ displayName: 'Luis', lives: 0 }],
+  island: [{ displayName: 'Luis', lives: 0, points: 1, pick: null }],
   history: [{ matchday: 1, eliminated: ['Luis'], resolvedAt: '2026-08-22T00:00:00.000Z' }],
   nextPollInSec: 30,
+};
+
+/**
+ * The same board after the matchday locked: picks are revealed, and a null now
+ * means the player never picked rather than "hidden". Clients tell the two
+ * apart by reading `isLocked` — there is no flag on the player.
+ */
+export const lockedBoard = {
+  ...board,
+  isLocked: true,
+  alive: [{ displayName: 'Ana', lives: 2, points: 3, pick: 'RIV' }],
+  island: [{ displayName: 'Luis', lives: 0, points: 1, pick: null }],
+  nextPollInSec: 15,
 };
 
 export const myEntry = {

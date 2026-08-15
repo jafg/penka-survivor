@@ -10,7 +10,8 @@ from schemas with `Static<>` — schema first, type second.
 
 - **A team is a catalog code, never a generated id.** `TeamCodeSchema` (2–5 chars) types
   every team-shaped field: `Match.homeTeamCode`/`awayTeamCode`, `PlayerPick.teamCode`,
-  `Entry.usedTeams`, `MyEntry.myPick`/`usedTeams`, and `SubmitPickRequest.teamCode`. The
+  `Entry.usedTeams`, `MyEntry.myPick`/`usedTeams`, `BoardPlayer.pick`, and
+  `SubmitPickRequest.teamCode`. The
   catalog is fixed data and owns team identity, so there are no team documents to point
   at; codes are unique within a league and every match belongs to exactly one league.
 

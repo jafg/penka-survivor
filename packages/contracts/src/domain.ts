@@ -187,10 +187,23 @@ export type Resolution = Static<typeof ResolutionSchema>;
 
 // ── Read models ────────────────────────────────────────────────────────────
 
-/** What the public board shows about a player: display name and lives, nothing else. */
+/**
+ * What the public board shows about a player: display name, lives, points, and
+ * the team they backed this matchday.
+ *
+ * `pick` is ALWAYS null while the matchday is open — the board builder writes
+ * null before lock whatever the player submitted. After lock it is the code they
+ * played, or null when they never picked. Nothing on the wire says which null it
+ * is: clients read `board.isLocked`, and there is deliberately no `pickHidden`
+ * flag to keep the two meanings from drifting apart.
+ */
 export const BoardPlayerSchema = StrictObject({
   displayName: Type.String({ minLength: 1 }),
   lives: Type.Integer({ minimum: 0 }),
+  /** Correct picks so far. Island players keep scoring, so this is what they play for. */
+  points: Type.Integer({ minimum: 0 }),
+  /** Hidden before lock, revealed after — see the note above. */
+  pick: Type.Union([TeamCodeSchema, Type.Null()]),
 });
 export type BoardPlayer = Static<typeof BoardPlayerSchema>;
 
@@ -202,9 +215,17 @@ export const BoardHistoryItemSchema = StrictObject({
 export type BoardHistoryItem = Static<typeof BoardHistoryItemSchema>;
 
 /**
- * Public board read model. It is shared by every viewer of a penka and must
- * NEVER carry personal data (no picks, no used teams, no emails, no ids that
- * identify a viewer). Personal state travels separately as MyEntry.
+ * Public board read model, shared by every viewer of a penka: it carries only
+ * what is public to all of them, and NEVER anything private to one player — no
+ * used teams, no emails, no ids, no "my" field of any kind. Personal state
+ * travels separately as MyEntry.
+ *
+ * A pick is not private for the whole matchday: it becomes public the moment the
+ * matchday locks, because revealing what everyone played is the Survivor format
+ * itself, not a leak. Before lock it is secret, and the schema cannot express
+ * that gate — `BoardPlayerSchema.pick` is nullable either way — so the board
+ * builder enforces the pre-lock null at runtime, and the game module's
+ * integration tests are what hold it.
  */
 export const BoardSchema = StrictObject({
   matchday: Type.Integer({ minimum: 1 }),

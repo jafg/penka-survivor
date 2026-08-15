@@ -15,6 +15,7 @@ import {
   TeamSchema,
   UserSchema,
   type Board,
+  type BoardPlayer,
   type MyEntry,
   type User,
 } from './domain';
@@ -206,16 +207,31 @@ describe('domain schemas reject invalid payloads', () => {
   });
 });
 
-describe('Board is public and carries no personal data', () => {
-  it('has no personal fields in the schema (runtime)', () => {
+describe('Board is public: shared data only, never the viewer', () => {
+  it('has no viewer-identifying fields in the schema (runtime)', () => {
     const boardKeys = Object.keys(BoardSchema.properties);
     for (const forbidden of ['myPick', 'usedTeams', 'email', 'userId', 'entryId', 'joinCode']) {
       expect(boardKeys).not.toContain(forbidden);
     }
   });
 
-  it('board players expose only displayName and lives', () => {
-    expect(Object.keys(BoardPlayerSchema.properties).sort()).toEqual(['displayName', 'lives']);
+  it('board players expose displayName, lives, points and pick — nothing else', () => {
+    expect(Object.keys(BoardPlayerSchema.properties).sort()).toEqual([
+      'displayName',
+      'lives',
+      'pick',
+      'points',
+    ]);
+  });
+
+  it('keeps player-private state off the board even now that picks are on it', () => {
+    // A pick becomes public at lock; a used-team list and any identifier never
+    // do — they stay structurally impossible, not merely omitted.
+    for (const forbidden of ['usedTeams', 'email', 'userId', 'entryId']) {
+      expect(Object.keys(BoardPlayerSchema.properties)).not.toContain(forbidden);
+    }
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, usedTeams: ['RIV'] })).toBe(false);
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, userId: 'user-1' })).toBe(false);
   });
 
   it('structurally cannot contain personal fields (compile time)', () => {
@@ -223,6 +239,41 @@ describe('Board is public and carries no personal data', () => {
     expectTypeOf<Board>().not.toHaveProperty('usedTeams');
     expectTypeOf<Board>().not.toHaveProperty('email');
     expectTypeOf<Board>().not.toHaveProperty('userId');
+    expectTypeOf<BoardPlayer>().not.toHaveProperty('usedTeams');
+    expectTypeOf<BoardPlayer>().not.toHaveProperty('userId');
+    expectTypeOf<BoardPlayer>().toHaveProperty('points');
+    expectTypeOf<BoardPlayer>().toHaveProperty('pick');
+  });
+
+  it('carries a pick as a catalog code or null, with no pickHidden flag', () => {
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, pick: 'BOC' })).toBe(true);
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, pick: null })).toBe(true);
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, pick: 'RIVERPLATE' })).toBe(false);
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, pickHidden: true })).toBe(false);
+  });
+
+  it('leaves the lock gate to the builder: null means hidden or never picked', () => {
+    // Before lock the board shows every pick as null; after lock a null means
+    // the player never picked. The wire cannot separate the two — clients read
+    // board.isLocked. The schema cannot express the gate either, so the pre-lock
+    // null is enforced at runtime by the board builder (integration-tested in
+    // the game module).
+    expect(Value.Check(BoardSchema, fx.board)).toBe(true);
+    expect(fx.board.isLocked).toBe(false);
+    expect(fx.board.alive.map((player) => player.pick)).toEqual([null]);
+    expect(fx.board.island.map((player) => player.pick)).toEqual([null]);
+
+    expect(Value.Check(BoardSchema, fx.lockedBoard)).toBe(true);
+    expect(fx.lockedBoard.isLocked).toBe(true);
+    expect(fx.lockedBoard.alive.map((player) => player.pick)).toEqual(['RIV']);
+    expect(fx.lockedBoard.island.map((player) => player.pick)).toEqual([null]);
+  });
+
+  it('shows points, so an island player has a public standing to play for', () => {
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, points: 0 })).toBe(true);
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, points: -1 })).toBe(false);
+    expect(Value.Check(BoardPlayerSchema, { ...fx.boardPlayer, points: 1.5 })).toBe(false);
+    expect(Value.Check(BoardPlayerSchema, fx.omit(fx.boardPlayer, 'points'))).toBe(false);
   });
 });
 
