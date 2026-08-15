@@ -11,13 +11,22 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fastify/type-provider-typebox": "^5.1.0",
     "@penka/contracts": "workspace:*",
-    "fastify": "^5.2.1"
+    "@penka/game-engine": "workspace:*",
+    "@sinclair/typebox": "^0.34.14",
+    "amqplib": "^2.0.1",
+    "fastify": "^5.2.1",
+    "fastify-plugin": "^5.0.1",
+    "ioredis": "^5.4.2",
+    "mongodb": "^6.12.0"
   },
   "devDependencies": {
+    "@penka/api": "workspace:*",
     "@penka/config": "workspace:*",
     "@types/node": "^22.10.7",
     "eslint": "^9.18.0",
+    "testcontainers": "^10.16.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
