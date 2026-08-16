@@ -376,3 +376,7 @@ the suite.
 - `docs/CODEBASE-CONVENTIONS.md` — a read-only audit of what the code actually does.
 - `docs/ai-development-log.md` — what was delegated to an AI assistant, and what was
   reviewed or changed afterwards.
+- `docs/prompts/` — every build prompt, verbatim, in the order it was run. The plan was
+  generated in one pass from the design spec and then corrected against the code as it
+  went; `prompt_plan_corrections.md` is that correction, and it sits between prompts 5
+  and 5b.

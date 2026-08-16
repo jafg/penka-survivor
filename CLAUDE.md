@@ -27,7 +27,7 @@ penka-survivor/
 ├── infra/
 │   └── docker-compose.yml # mongo:7, redis:7, rabbitmq:3-management
 ├── scripts/demo.mjs       # `pnpm demo`: env check → infra → every app → URL map
-├── docs/                  # CODEBASE-CONVENTIONS.md, ai-development-log.md
+├── docs/                  # CODEBASE-CONVENTIONS.md, ai-development-log.md, prompts/
 ├── README.md              # architecture, ports, operator flow, trade-offs
 ├── .env.example           # dev-only defaults; `pnpm demo` copies it to .env
 ├── turbo.json
