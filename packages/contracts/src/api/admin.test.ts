@@ -1,6 +1,7 @@
 import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
 import {
+  ADMIN_KEY_HEADER,
   AdminMatchdayDetailResponseSchema,
   AdminPoolsResponseSchema,
   CloseMatchdayResponseSchema,
@@ -212,5 +213,18 @@ describe('admin schemas', () => {
     expect(
       Value.Check(AdminPoolsResponseSchema, { pools: [{ ...poolSummary, ownerEmail: 'x@y.z' }] }),
     ).toBe(false);
+  });
+});
+
+describe('ADMIN_KEY_HEADER', () => {
+  it('is the header the admin API authenticates on', () => {
+    expect(ADMIN_KEY_HEADER).toBe('x-admin-key');
+  });
+
+  it('is lowercase, because that is how Node hands headers to a server', () => {
+    // `request.headers[ADMIN_KEY_HEADER]` is an exact key lookup on an object
+    // Node has already lowercased. A constant spelled `X-Admin-Key` would send
+    // correctly from a browser and never match on the server.
+    expect(ADMIN_KEY_HEADER).toBe(ADMIN_KEY_HEADER.toLowerCase());
   });
 });

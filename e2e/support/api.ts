@@ -2,6 +2,7 @@ import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { Value } from '@sinclair/typebox/value';
 import type { Static, TSchema } from '@sinclair/typebox';
 import {
+  ADMIN_KEY_HEADER,
   type AuthTokens,
   AdminMatchdayDetailResponseSchema,
   BoardResponseSchema,
@@ -165,7 +166,7 @@ export async function submitPick(
 // ── Admin API (@penka/backoffice-api, port 3001) ───────────────────────────
 
 function adminHeaders(): Record<string, string> {
-  return { 'x-admin-key': env.adminApiKey };
+  return { [ADMIN_KEY_HEADER]: env.adminApiKey };
 }
 
 export async function getAdminMatchday(

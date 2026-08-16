@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import fp from 'fastify-plugin';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { ADMIN_KEY_HEADER } from '@penka/contracts';
 import { ApiError } from '../errors';
 
 declare module 'fastify' {
@@ -13,8 +14,6 @@ declare module 'fastify' {
 export interface AdminAuthPluginOptions {
   apiKey: string;
 }
-
-export const ADMIN_KEY_HEADER = 'x-admin-key';
 
 /**
  * Constant-time comparison. A plain `===` returns as soon as two bytes differ,

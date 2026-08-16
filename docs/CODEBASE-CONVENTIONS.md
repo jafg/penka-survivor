@@ -879,11 +879,11 @@ Decorators: `mongo`/`db` (`plugins/mongo.ts:21-22`), `redis` (`plugins/redis.ts:
 (`plugins/admin-auth.ts:47`). Plugin names: `mongo`, `redis`, `rabbit`, `admin-auth` — none
 declares `dependencies`.
 
-**Admin authentication**, `apps/backoffice-api/src/plugins/admin-auth.ts:17-53`:
+**Admin authentication**, `apps/backoffice-api/src/plugins/admin-auth.ts:17-53`. The header
+name itself comes from the contract (`ADMIN_KEY_HEADER`, `api/admin.ts:22`), so the API and
+its console cannot drift apart on it:
 
 ```ts
-export const ADMIN_KEY_HEADER = 'x-admin-key';
-
 /**
  * Constant-time comparison. A plain `===` returns as soon as two bytes differ,
  * so an attacker who can time the answer learns the key one character at a
@@ -1324,8 +1324,9 @@ Neither API registers CORS (see "Not found"), which is why the proxy — and the
 fixed ports — are load-bearing for local development and for the `e2e` suite.
 
 `apps/web` stores its session in `localStorage` under `penka.survivor.auth` as
-`{ tokens, user }`. `apps/backoffice-web/src/api/client.ts:36` declares its own
-`ADMIN_KEY_HEADER = 'x-admin-key'`.
+`{ tokens, user }`. `apps/backoffice-web` keeps the operator's admin key under
+`penka.survivor.adminKey` (`api/client.ts:29`) and sends it in `ADMIN_KEY_HEADER`, imported
+from `@penka/contracts` — the same constant the API compares against.
 
 ---
 
@@ -1334,13 +1335,13 @@ fixed ports — are load-bearing for local development and for the `e2e` suite.
 - **No CORS plugin anywhere.** `@fastify/cors` appears in no `package.json` and is imported
   by no file. Both browsers reach their API through the Vite dev proxy; a deployment that
   serves the SPAs from a different origin would need it.
-- **`ADMIN_KEY_HEADER` is declared twice and exported by neither package's public surface.**
-  `apps/backoffice-api/src/plugins/admin-auth.ts:17` and
-  `apps/backoffice-web/src/api/client.ts:36` each define the literal `'x-admin-key'`, and
-  two test harnesses spell it inline (`apps/backoffice-api/test/integration/harness.ts:51`,
-  `apps/workers/test/integration/harness.ts:69`). It is a cross-app string with no compiler
-  checking it — the same argument `@penka/contracts` makes for queue names and Redis keys —
-  but it is not in the contract.
+- ~~**`ADMIN_KEY_HEADER` is declared twice and exported by neither package's public
+  surface.**~~ **Resolved.** It now lives in `packages/contracts/src/api/admin.ts:22` and is
+  imported by the API (`plugins/admin-auth.ts:4`), the console (`api/client.ts:3`), the
+  integration harness and the `e2e` suite. The remaining literals are in
+  `apps/backoffice-api/src/plugins/admin-auth.test.ts`, which asserts the wire spelling on
+  purpose — including one deliberately capitalized `X-Admin-Key` proving HTTP header
+  matching is case-insensitive.
 - **No OpenAPI/Swagger.** No `@fastify/swagger`, no generated spec. The TypeBox schemas are
   the only machine-readable description of the API.
 - **No Dockerfiles.** `infra/docker-compose.yml` provisions Mongo/Redis/RabbitMQ only; the

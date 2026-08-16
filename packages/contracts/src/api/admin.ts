@@ -3,6 +3,28 @@ import { IdSchema, MatchOutcomeSchema, MatchSchema, MatchdaySchema, PenkaSchema 
 import { StrictObject } from '../strict';
 
 /**
+ * The header every admin route authenticates on, carrying the deployment's
+ * shared `ADMIN_API_KEY`.
+ *
+ * It lives in the contract for the same reason `POLLING_PROFILE_KEY` does: two
+ * apps must agree on it byte for byte — `@penka/backoffice-api` compares it,
+ * `@penka/backoffice-web` sends it — and a header name is otherwise the one
+ * thing no compiler checks across an app boundary. Spelled in both, a rename on
+ * the API side would still compile everywhere and turn every operator request
+ * into a 401 at runtime.
+ *
+ * **Lowercase on purpose.** The server reads it as `request.headers[...]`, an
+ * exact lookup on an object Node has already lowercased; HTTP header names are
+ * case-insensitive on the wire, so a browser sending `X-Admin-Key` matches this
+ * fine, but a constant spelled that way would never match on the server.
+ *
+ * The shared-secret scheme itself is an MVP decision documented at its check
+ * (`apps/backoffice-api/src/plugins/admin-auth.ts`); when it is replaced by
+ * role-based users this constant goes with it.
+ */
+export const ADMIN_KEY_HEADER = 'x-admin-key';
+
+/**
  * Board polling cadence profiles an operator can set for the DEPLOYMENT, not
  * for one penka: the profile is a load valve ("how hard may clients hammer us
  * right now"). Editorial speed-up needs no operator — a board tightens itself

@@ -8,9 +8,10 @@ from schemas with `Static<>` — schema first, type second.
 
 Also the home of **names two apps must agree on byte for byte**: the Redis key the back
 office writes and the public API reads (`POLLING_PROFILE_KEY`), the deterministic
-document ids (`matchdayId`, `matchId`), and the RabbitMQ topology and routing keys. A
-key or an id template is the one thing no compiler checks across an app boundary, so it
-belongs to the contract rather than to whichever app happened to need it first.
+document ids (`matchdayId`, `matchId`), the RabbitMQ topology and routing keys, and the
+header the admin API authenticates on (`ADMIN_KEY_HEADER`). A key, a header or an id
+template is the one thing no compiler checks across an app boundary, so it belongs to the
+contract rather than to whichever app happened to need it first.
 
 ## Conventions
 

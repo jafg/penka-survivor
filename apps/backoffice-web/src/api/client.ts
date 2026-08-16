@@ -1,6 +1,6 @@
 import type { Static, TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
-import { ApiErrorSchema, ErrorCodes, type ErrorCode } from '@penka/contracts';
+import { ADMIN_KEY_HEADER, ApiErrorSchema, ErrorCodes, type ErrorCode } from '@penka/contracts';
 
 /**
  * Where `@penka/backoffice-api` listens. The default matches the repo's port map
@@ -24,16 +24,6 @@ export function apiPath(path: string): string {
 export function apiUrl(path: string): string {
   return `${ADMIN_API_BASE_URL}${apiPath(path)}`;
 }
-
-/**
- * The header `@penka/backoffice-api` authenticates on.
- *
- * Spelled here rather than imported: the API owns the name, but a Vue app must
- * not import from another app, and `@penka/contracts` does not carry it yet.
- * Worth promoting into the contract alongside `POLLING_PROFILE_KEY` — it is the
- * same kind of cross-app constant — but that is an API-side change.
- */
-export const ADMIN_KEY_HEADER = 'x-admin-key';
 
 /** Where an operator-supplied key is remembered between visits. */
 export const ADMIN_KEY_STORAGE_KEY = 'penka.survivor.adminKey';

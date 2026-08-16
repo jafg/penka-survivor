@@ -116,7 +116,12 @@ they explain why some rows have corrections attached.
 - **Prompt 11 found one gap in 5b**: `globalPassThroughEnv` was missing `PREFETCH`,
   `MAX_ATTEMPTS` and `LOG_LEVEL`, which `@penka/workers` reads. Added along with the
   `VITE_*` variables the two Vue apps read.
-- **Three things the reviews have not resolved**, carried here rather than quietly dropped:
-  neither API registers CORS; `ADMIN_KEY_HEADER` is spelled independently in
-  `apps/backoffice-api` and `apps/backoffice-web` instead of living in `@penka/contracts`;
-  and CI runs neither `pnpm build` nor `pnpm e2e`.
+- **The conventions audit found `ADMIN_KEY_HEADER` spelled independently** in
+  `apps/backoffice-api` and `apps/backoffice-web` — a name two apps must agree on byte for
+  byte, with no compiler checking it across the boundary. It now lives in
+  `@penka/contracts` (`api/admin.ts`) and both sides import it, the same rule
+  `POLLING_PROFILE_KEY` and the id builders already followed. Test first, as always: the
+  constant's two assertions in `packages/contracts/src/api/admin.test.ts` went red before
+  the export existed.
+- **Two things the reviews have not resolved**, carried here rather than quietly dropped:
+  neither API registers CORS, and CI runs neither `pnpm build` nor `pnpm e2e`.

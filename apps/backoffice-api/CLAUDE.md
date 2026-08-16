@@ -39,6 +39,8 @@ exposed to the public internet, and keys nothing on the client IP.
 
 - One shared key in the **`X-Admin-Key`** header, compared against `ADMIN_API_KEY` with
   `timingSafeEqual`. Missing, malformed and wrong all answer the same 401 `unauthorized`.
+  The header name is `ADMIN_KEY_HEADER` from `@penka/contracts`, not a local literal: the
+  console has to send exactly what this plugin reads, and nothing else checks that.
 - **This is a deliberate MVP decision, not a design.** A shared secret has no identity
   behind it, so an audit log cannot say *who* closed a matchday, and rotating it logs out
   every operator at once. The production path is role-based users — the `users` collection

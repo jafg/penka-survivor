@@ -52,12 +52,12 @@ the dev proxy is what makes same-origin requests work.
 - **A match id carries colons** (`copa-libertadores:md1:RIV-ATN`), so it must be
   `encodeURIComponent`-ed into the path. The server decodes exactly once (find-my-way does
   it), so never pre-decode or double-encode.
-- **The admin key is one shared secret for the deployment.** `ADMIN_KEY_HEADER` is spelled
-  in `api/client.ts:36` rather than imported: the API owns the name, a Vue app must not
-  import from another app, and `@penka/contracts` does not carry it yet. A stored key
-  (`penka.survivor.adminKey` in `localStorage`) beats the build-time one so a bundle can be
-  pointed at another stack without a rebuild. An empty key is removed, never stored — it
-  would shadow the fallback forever.
+- **The admin key is one shared secret for the deployment.** The header it travels in is
+  `ADMIN_KEY_HEADER` from `@penka/contracts` — the same constant `@penka/backoffice-api`
+  compares against, so the two cannot drift apart on a name no compiler checks. Never
+  re-spell it locally. A stored key (`penka.survivor.adminKey` in `localStorage`) beats the
+  build-time one so a bundle can be pointed at another stack without a rebuild. An empty
+  key is removed, never stored — it would shadow the fallback forever.
 - **The polling profile is deployment-wide.** `PUT /admin/v1/polling-profile` writes one
   Redis key (`ops:pollingProfile`) that every penka's board reads. Present it as a load
   valve, not as a per-penka setting; players see the change on their next poll, and up to

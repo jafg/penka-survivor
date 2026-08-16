@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { GenericContainer, Wait } from 'testcontainers';
 import { connect, type ChannelModel, type ConfirmChannel } from 'amqplib';
-import { RESOLUTION_QUEUE } from '@penka/contracts';
+import { ADMIN_KEY_HEADER, RESOLUTION_QUEUE } from '@penka/contracts';
 import type { AppConfig } from '../../src/config';
 import { declareTopology } from '../../src/messaging/topology';
 
@@ -48,7 +48,7 @@ export async function startInfra(): Promise<TestInfra> {
 export const TEST_ADMIN_KEY = 'integration-test-admin-key-0123456789';
 
 export function adminHeaders(key: string = TEST_ADMIN_KEY): Record<string, string> {
-  return { 'x-admin-key': key };
+  return { [ADMIN_KEY_HEADER]: key };
 }
 
 /** A valid AppConfig against the started containers, with a fresh database per call. */
