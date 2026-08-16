@@ -1,0 +1,9 @@
+{
+  "extends": "@penka/config/tsconfig/node.json",
+  "compilerOptions": {
+    // Node, plus DOM: the suite runs in Node, but the callbacks it hands to
+    // `page.addInitScript` are compiled here and execute in the browser.
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["support", "tests", "playwright.config.ts"]
+}

@@ -1,3 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
+  # The end-to-end suite: one package, at the root, because it belongs to no
+  # single app — it drives all of them at once.
+  - "e2e"

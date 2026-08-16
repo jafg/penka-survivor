@@ -9,7 +9,14 @@
     "RATE_LIMIT_MAX",
     "TRUST_PROXY",
     "RABBITMQ_URL",
-    "ADMIN_API_KEY"
+    "ADMIN_API_KEY",
+    "PREFETCH",
+    "MAX_ATTEMPTS",
+    "LOG_LEVEL",
+    "VITE_API_BASE_URL",
+    "VITE_ADMIN_API_BASE_URL",
+    "VITE_ADMIN_API_KEY",
+    "VITE_ADMIN_RESET_ENDPOINT"
   ],
   "tasks": {
     "build": {

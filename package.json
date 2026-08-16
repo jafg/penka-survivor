@@ -13,6 +13,9 @@
     "test:integration": "turbo run test:integration",
     "lint": "turbo run lint",
     "format": "prettier --write .",
+    "demo": "node scripts/demo.mjs",
+    "e2e": "pnpm --filter @penka/e2e e2e",
+    "e2e:install": "pnpm --filter @penka/e2e e2e:install",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d --wait",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
   },
