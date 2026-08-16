@@ -8,6 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { ObjectId } from 'mongodb';
 import { Value } from '@sinclair/typebox/value';
 import {
   ResolveMatchdayCommandSchema,
@@ -18,7 +19,11 @@ import {
 } from '@penka/contracts';
 import { buildApp } from '../../src/app';
 import { createResolutionPublisher } from '../../src/messaging/publisher';
-import { matchdaysCollection, matchesCollection } from '../../src/modules/admin/store';
+import {
+  matchdaysCollection,
+  matchesCollection,
+  penkasCollection,
+} from '../../src/modules/admin/store';
 import {
   adminHeaders,
   captureLogs,
@@ -198,6 +203,45 @@ describe('POST /admin/v1/leagues/:leagueId/matchdays/:number/resolve', () => {
 
     expect(response.statusCode).toBe(200);
     expect(await broker.drain()).toHaveLength(2);
+  });
+
+  it('republishes the first request, not a new one', async () => {
+    // Every command of a matchday carries the SAME requestedAt, because the
+    // workers count that same set to decide the matchday is finished. Two
+    // presses with two timestamps would be two different sets.
+    const stamp = (await storedMatchday())?.resolveRequestedAt;
+    expect(stamp).toBeInstanceOf(Date);
+
+    expect((await resolve()).statusCode).toBe(200);
+
+    const published = await broker.drain();
+    expect(published).toHaveLength(2);
+    for (const message of published) {
+      expect((message.body as { requestedAt: string }).requestedAt).toBe(stamp?.toISOString());
+    }
+    expect((await storedMatchday())?.resolveRequestedAt).toEqual(stamp);
+  });
+
+  it('leaves a penka created after the request out of the fan-out', async () => {
+    // The stranding case: a penka that joins between two presses must not appear
+    // in the second one. It is not counted by the workers' finalize either — both
+    // sides read `createdAt <= requestedAt` off the same stored timestamp — so it
+    // can neither be silently skipped nor hold the matchday open for everyone.
+    const latecomer = await createPenka(player, await registerUser(player, 'resolve-late'), LEAGUE);
+    const stamp = (await storedMatchday())?.resolveRequestedAt;
+    expect(stamp).toBeInstanceOf(Date);
+    const stored = await penkasCollection(admin.db).findOne({
+      _id: ObjectId.createFromHexString(latecomer.id),
+    });
+    expect(stored?.createdAt.getTime()).toBeGreaterThan(stamp?.getTime() ?? 0);
+
+    expect((await resolve()).statusCode).toBe(200);
+
+    const published = await broker.drain();
+    expect(published).toHaveLength(2);
+    expect(published.map((message) => message.routingKey)).not.toContain(
+      resolveRoutingKey(latecomer.id),
+    );
   });
 
   it('is a 404 for a matchday that does not exist', async () => {

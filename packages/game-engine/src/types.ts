@@ -29,6 +29,13 @@ export interface EntryEffect {
   teamConsumed: string | null;
 }
 
+/**
+ * What a resolution did to one pick, for the player who submitted it. Not a
+ * contract type: it is storage's label on a pick document, written once when
+ * the matchday resolves, and no endpoint serves it yet.
+ */
+export type PickResult = 'won' | 'lost' | 'void';
+
 export interface ResolutionSummary {
   totalEntries: number;
   aliveBefore: number;

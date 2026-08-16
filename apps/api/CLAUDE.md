@@ -115,11 +115,15 @@ forge `X-Forwarded-For` to get a fresh bucket.
   `POST /penkas/:penkaId/picks` are authenticated and carry the personal delta
   (`lives`, `status`, `myPick`, `usedTeams`). Nothing personal ever rides on the board.
 - **The lock gate is runtime, not schema.** `BoardPlayer.pick` is nullable in
-  `@penka/contracts`, so only `buildBoard` (`modules/game/board.ts`) can enforce "a pick
-  is secret until the matchday locks" — it drops every pick before lock however loudly
-  the caller passed one in. A `null` pick therefore means *hidden* before lock and *never
-  picked* after it; clients tell them apart with `board.isLocked`, and there is
-  deliberately no `pickHidden` flag to leak "this player has already picked".
+  `@penka/contracts`, so only `buildBoard` can enforce "a pick is secret until the
+  matchday locks" — it drops every pick before lock however loudly the caller passed one
+  in. A `null` pick therefore means *hidden* before lock and *never picked* after it;
+  clients tell them apart with `board.isLocked`, and there is deliberately no
+  `pickHidden` flag to leak "this player has already picked".
+- **`buildBoard` lives in `@penka/game-engine`, not here.** `@penka/workers` writes the
+  same cache entry after resolving a matchday, and two builders would drift into two
+  different boards depending on who wrote last. This app owns the *queries* that feed it
+  (`modules/game/routes.ts`); the shape is the engine's.
 - The board is cached aside on `penka:{penkaId}:board` for 60s. The whole board is one
   entry, so a cache hit is byte-identical and a poll costs a single Redis read. The
   staleness errs safe: a board built before lock keeps hiding picks for up to a minute
@@ -147,16 +151,25 @@ forge `X-Forwarded-For` to get a fresh bucket.
 - A penka the caller has not joined answers **exactly** like one that does not exist
   (404 `penka_not_found`, same body) — membership is not something a stranger gets to
   probe for.
-- `nextPollInSec` is server-driven and pure (`modules/game/polling.ts`): the server is the
-  only side that knows how close the lock is and how loaded the deployment is. The
+- `nextPollInSec` is server-driven and pure (`nextPollInSec` in `@penka/contracts/ops`,
+  shared with `@penka/workers` so a refreshed board carries the same cadence): the server
+  is the only side that knows how close the lock is and how loaded the deployment is. The
   operator profile lives in one Redis key for the whole deployment,
   `POLLING_PROFILE_KEY` from `@penka/contracts` (`ops:pollingProfile`) — this app only
   reads it, `@penka/backoffice-api` writes it, and neither owns the name. `live` → 2s,
   `slow` → 30s, and `normal` → 10s except
   inside the last 10 minutes before lock, where it tightens to 2s. A missing or
   unrecognized value reads as `normal`; `PollingProfileSchema` is the closed set.
-- `board.history` is `[]` until matchday resolutions exist — an empty history is the
-  truth today, not a placeholder.
+- `board.history` comes from the `resolutions` collection, which **`@penka/workers` owns
+  and this app only reads** (through the `penkaId` prefix of the worker's unique
+  `(penkaId, matchdayId)` index). One row per resolved matchday, naming the players it
+  knocked out — names, never ids, like the rest of the board. It is `[]` until the first
+  matchday resolves.
+- The board cache is written from two sides: aside by this app on a miss, and ahead by
+  `@penka/workers` right after it resolves a matchday, so the first poll after a
+  resolution does not wait out the previous entry's TTL. Both write the same key with the
+  same builder and the same TTL; the worker also **deletes** the boards of sibling penkas
+  when a shared matchday flips to resolved, and this app rebuilds them on the next poll.
 
 ## Must NOT
 

@@ -1,7 +1,8 @@
 import type { Db } from 'mongodb';
 import type { FastifyBaseLogger } from 'fastify';
-import type { ResolveMatchdayCommand } from '@penka/contracts';
+import { ErrorCodes, type ResolveMatchdayCommand } from '@penka/contracts';
 import type { ResolutionPublisher } from '../../messaging/publisher';
+import { ApiError } from '../../errors';
 import { matchdaysCollection } from './store';
 
 export interface RequestResolutionInput {
@@ -10,7 +11,14 @@ export interface RequestResolutionInput {
   publisher: ResolutionPublisher;
   matchdayId: string;
   commands: readonly ResolveMatchdayCommand[];
+  /** Whether THIS request stamped the matchday; only then may it be un-stamped. */
+  claimed: boolean;
+}
+
+/** The timestamp every command of a matchday shares, and who put it there. */
+export interface ResolveClaim {
   requestedAt: Date;
+  claimed: boolean;
 }
 
 function toThrowable(reason: unknown): Error {
@@ -23,7 +31,7 @@ function toThrowable(reason: unknown): Error {
  * replace the real cause with a less useful one. It is logged instead, with
  * the id an operator needs to clear the flag by hand.
  */
-async function clearResolveRequest(db: Db, log: FastifyBaseLogger, matchdayId: string) {
+export async function clearResolveRequest(db: Db, log: FastifyBaseLogger, matchdayId: string) {
   try {
     await matchdaysCollection(db).updateOne(
       { _id: matchdayId },
@@ -41,48 +49,70 @@ async function clearResolveRequest(db: Db, log: FastifyBaseLogger, matchdayId: s
 }
 
 /**
- * Queue a matchday's resolution: publish one command per penka and mark the
- * matchday as requested. Two systems, one operation, no transaction across
- * them — so the question is not whether they can disagree but which way.
+ * Take (or join) a matchday's resolution request and return the timestamp its
+ * whole fan-out is pinned to.
  *
- * They run concurrently (allSettled, both results inspected: neither leg is a
- * prerequisite of the other), and the failure modes are deliberately
- * asymmetric:
+ * The timestamp is not decoration: `@penka/workers` counts the penkas of
+ * `{ leagueId, createdAt <= requestedAt }` to decide the matchday is finished,
+ * so the set of penkas that got a command and the set the workers wait for must
+ * be derived from the SAME instant. A second press that minted a fresh `new
+ * Date()` would build a wider set than the first — and a penka that joined in
+ * between would be resolved by nobody, because the first fan-out has already
+ * finished the matchday without it.
  *
- * - Publish failed → the marker is rolled back. A matchday marked as requested
- *   with nothing in the queue is the one state nobody recovers from: it looks
- *   done, so no operator presses resolve again and the matchday never runs.
- * - Only the marker failed → the caller still succeeds. The commands ARE in the
- *   queue and the workers will run them, which is exactly what the response
- *   promises. A retry republishes the same deterministic message ids, which the
- *   workers recognize as work they have already done, so the cost of this
- *   direction is duplicate messages — and duplicates are harmless by design.
+ * So the marker is claimed **before** the penkas are read, conditionally and in
+ * one round trip: the first press stamps it, and every later press replays that
+ * same stamp. Two operators pressing at the same instant therefore agree, which
+ * a read-then-write could not guarantee.
  */
-export async function requestResolution(input: RequestResolutionInput): Promise<void> {
-  const { db, log, publisher, matchdayId, commands, requestedAt } = input;
-
-  const [published, marked] = await Promise.allSettled([
-    publisher.publishResolutions(commands),
-    matchdaysCollection(db).updateOne(
-      { _id: matchdayId },
-      { $set: { resolveRequestedAt: requestedAt } },
-    ),
-  ]);
-
-  if (published.status === 'rejected') {
-    if (marked.status === 'fulfilled') {
-      // Only compensate what actually happened: with the mark itself rejected
-      // there is nothing to undo, and the write would go to a database that has
-      // just said it is not accepting any.
-      await clearResolveRequest(db, log, matchdayId);
-    }
-    throw toThrowable(published.reason);
+export async function claimResolveRequest(
+  db: Db,
+  matchdayId: string,
+  now: Date,
+): Promise<ResolveClaim> {
+  const claimed = await matchdaysCollection(db).findOneAndUpdate(
+    { _id: matchdayId, resolveRequestedAt: { $exists: false } },
+    { $set: { resolveRequestedAt: now } },
+    { returnDocument: 'after', projection: { resolveRequestedAt: 1 } },
+  );
+  if (claimed !== null) {
+    return { requestedAt: now, claimed: true };
   }
 
-  if (marked.status === 'rejected') {
-    log.warn(
-      { err: toThrowable(marked.reason), matchdayId, penkas: commands.length },
-      'resolution was published but the matchday could not be marked as requested; a retry will republish the same message ids',
-    );
+  // Somebody else holds the request: replay their timestamp, never a new one.
+  const existing = await matchdaysCollection(db).findOne(
+    { _id: matchdayId },
+    { projection: { resolveRequestedAt: 1 } },
+  );
+  if (existing?.resolveRequestedAt === undefined) {
+    // The caller loaded this matchday moments ago, so it went away underneath
+    // the request. Nothing in the repo deletes matchdays; answering 404 says
+    // what happened instead of publishing against a calendar that is gone.
+    throw new ApiError(404, ErrorCodes.matchday_not_found, 'Unknown matchday');
+  }
+  return { requestedAt: existing.resolveRequestedAt, claimed: false };
+}
+
+/**
+ * Publish one command per penka of the request claimed above.
+ *
+ * The marker is written before this runs, which leaves exactly one failure to
+ * compensate: a publish that never reached the broker. The matchday would then
+ * look requested with nothing in the queue — the one state nobody recovers
+ * from, since it reads as done and no operator presses resolve again — so the
+ * claim is given back. Only ours: a republish that fails says nothing about the
+ * request it was replaying, and clearing that marker would let the next press
+ * mint a second, wider fan-out.
+ */
+export async function requestResolution(input: RequestResolutionInput): Promise<void> {
+  const { db, log, publisher, matchdayId, commands, claimed } = input;
+
+  try {
+    await publisher.publishResolutions(commands);
+  } catch (reason) {
+    if (claimed) {
+      await clearResolveRequest(db, log, matchdayId);
+    }
+    throw toThrowable(reason);
   }
 }

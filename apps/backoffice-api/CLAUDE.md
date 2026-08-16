@@ -69,12 +69,23 @@ matchday's `status` only becomes `resolved` when they are done.
   set open/locked/resolved; "an operator pressed resolve and the workers have not
   finished" is not a state of the game, and making it one would put a fourth value in
   front of every player-facing client. No mapper emits it and `@penka/api` never reads it.
-- Publishing and marking run **concurrently** (`Promise.allSettled`, both results
-  inspected — `resolve.ts`), and the failure modes are deliberately asymmetric: if the
-  publish fails the marker is rolled back through a logging helper that never throws over
-  the original error; if only the marker fails the request still succeeds, because the
-  commands *are* queued and a retry republishes the same deterministic message ids. The
-  one unrecoverable state is a matchday marked as requested with nothing in the queue — it
+- **The marker is claimed before the penkas are read, and it pins the fan-out to one
+  instant** (`claimResolveRequest` in `resolve.ts`). `resolveRequestedAt` is set by a
+  conditional `findOneAndUpdate` on `{ resolveRequestedAt: { $exists: false } }`, and
+  every later press replays the stored timestamp instead of minting a new one; the penka
+  query then filters `{ leagueId, createdAt: { $lte: requestedAt } }` — the same predicate
+  `@penka/workers` counts with when it decides the matchday is finished. Without that, a
+  second press would build a **wider** set than the first, and a penka created in between
+  would be resolved by nobody: the first fan-out has already flipped the matchday, so its
+  command comes back `already_resolved` and is acked and forgotten.
+- A second press therefore republishes the **identical** generation. That is not a no-op
+  and deliberately so — duplicates are harmless (deterministic message ids), while
+  refusing would take away the only way to retry a matchday whose commands were lost.
+- Publishing failure is compensated, but **only by the request that claimed the marker**:
+  the claim is given back through a logging helper that never throws over the original
+  error. A republish that fails says nothing about the request it was replaying, and
+  clearing that marker would let the next press claim a new, wider generation. The one
+  unrecoverable state is a matchday marked as requested with nothing in the queue — it
   looks done, so nobody presses resolve again.
 - Setting a result on an already-resolved matchday is 409 `already_resolved`. That is
   beyond the letter of the endpoint, but the workers have already eliminated players on

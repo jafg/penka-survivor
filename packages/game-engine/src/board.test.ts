@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Value } from '@sinclair/typebox/value';
-import { BoardSchema, type Entry, type Matchday, type PlayerPick } from '@penka/contracts';
+import {
+  BoardSchema,
+  type Entry,
+  type Matchday,
+  type PlayerPick,
+  type Resolution,
+} from '@penka/contracts';
 import { buildBoard, isMatchdayLocked } from './board';
 
 const LOCK_AT = '2026-08-21T18:45:00.000Z';
@@ -42,12 +48,37 @@ function buildPick(overrides: Partial<PlayerPick> = {}): PlayerPick {
   };
 }
 
+function buildResolution(overrides: Partial<Resolution> = {}): Resolution {
+  return {
+    id: 'resolution-1',
+    penkaId: 'penka-1',
+    matchdayId: 'copa-libertadores:md1',
+    resolvedAt: '2026-08-21T21:00:00.000Z',
+    eliminatedEntryIds: ['entry-luis'],
+    islandEntryIds: ['entry-luis'],
+    ...overrides,
+  };
+}
+
 const ANA = buildEntry();
-const LUIS = buildEntry({ id: 'entry-luis', userId: 'user-luis', lives: 0, status: 'island', points: 1 });
+const LUIS = buildEntry({
+  id: 'entry-luis',
+  userId: 'user-luis',
+  lives: 0,
+  status: 'island',
+  points: 1,
+});
 
 const NAMES = new Map([
   ['user-ana', 'Ana'],
   ['user-luis', 'Luis'],
+]);
+
+/** matchdayId → number, built by each caller from the calendar it already loaded. */
+const MATCHDAY_NUMBERS = new Map([
+  ['copa-libertadores:md1', 1],
+  ['copa-libertadores:md2', 2],
+  ['copa-libertadores:md3', 3],
 ]);
 
 function build(overrides: Partial<Parameters<typeof buildBoard>[0]> = {}) {
@@ -56,6 +87,8 @@ function build(overrides: Partial<Parameters<typeof buildBoard>[0]> = {}) {
     entries: [ANA, LUIS],
     displayNames: NAMES,
     picks: [buildPick(), buildPick({ id: 'pick-2', entryId: 'entry-luis', teamCode: 'BOC' })],
+    resolutions: [],
+    matchdayNumbers: MATCHDAY_NUMBERS,
     now: BEFORE_LOCK,
     nextPollInSec: 10,
     ...overrides,
@@ -130,6 +163,8 @@ describe('buildBoard', () => {
       entries: [ANA, LUIS, strong, sameLives],
       displayNames: new Map([...NAMES, ['user-b', 'Bea'], ['user-c', 'Caro']]),
       picks: [],
+      resolutions: [],
+      matchdayNumbers: MATCHDAY_NUMBERS,
       now: BEFORE_LOCK,
       nextPollInSec: 10,
     });
@@ -158,8 +193,81 @@ describe('buildBoard', () => {
     expect(board.nextPollInSec).toBe(2);
   });
 
-  it('reports an empty history until resolutions exist', () => {
+  it('reports an empty history until a matchday has been resolved', () => {
     expect(build().history).toEqual([]);
+  });
+
+  it('turns each resolution into a history row, oldest matchday first', () => {
+    const board = build({
+      // Deliberately out of order: resolutions arrive from a query, and a
+      // history that jumps md2 → md1 reads as a bug to every player.
+      resolutions: [
+        buildResolution({ id: 'r2', matchdayId: 'copa-libertadores:md2' }),
+        buildResolution({ id: 'r1', matchdayId: 'copa-libertadores:md1' }),
+      ],
+    });
+
+    expect(board.history.map((row) => row.matchday)).toEqual([1, 2]);
+    expect(Value.Check(BoardSchema, board)).toBe(true);
+  });
+
+  it('names the players a matchday eliminated instead of leaking entry ids', () => {
+    const board = build({ resolutions: [buildResolution()] });
+
+    expect(board.history).toEqual([
+      { matchday: 1, eliminated: ['Luis'], resolvedAt: '2026-08-21T21:00:00.000Z' },
+    ]);
+    expect(JSON.stringify(board.history)).not.toContain('entry-luis');
+  });
+
+  it('names an eliminated player whose user record vanished without leaking an id', () => {
+    const board = build({
+      resolutions: [buildResolution()],
+      displayNames: new Map([['user-ana', 'Ana']]),
+    });
+
+    const [row] = board.history;
+    expect(row?.eliminated).toHaveLength(1);
+    expect(row?.eliminated[0]).not.toContain('entry-luis');
+    expect(row?.eliminated[0]).not.toContain('user-luis');
+    expect(Value.Check(BoardSchema, board)).toBe(true);
+  });
+
+  it('names an eliminated entry the board never loaded without leaking its id', () => {
+    // An entry can be missing from a shared board only if the two queries raced;
+    // the row still has to name a player, and BoardHistoryItem has no nulls.
+    const board = build({
+      resolutions: [buildResolution({ eliminatedEntryIds: ['entry-gone'] })],
+    });
+
+    expect(board.history[0]?.eliminated).toHaveLength(1);
+    expect(JSON.stringify(board.history)).not.toContain('entry-gone');
+    expect(Value.Check(BoardSchema, board)).toBe(true);
+  });
+
+  it('drops a resolution whose matchday it cannot number', () => {
+    // A history row with the wrong matchday number is worse than a missing one:
+    // players read it as "I survived matchday 2" about a matchday nobody played.
+    const board = build({
+      resolutions: [
+        buildResolution({ id: 'r1' }),
+        buildResolution({ id: 'r9', matchdayId: 'other-league:md1' }),
+      ],
+    });
+
+    expect(board.history.map((row) => row.matchday)).toEqual([1]);
+  });
+
+  it('keeps a matchday that eliminated nobody in the history', () => {
+    // Survivors want to see that the matchday happened and everyone came
+    // through it, which an absent row would not say.
+    const board = build({
+      resolutions: [buildResolution({ eliminatedEntryIds: [], islandEntryIds: [] })],
+    });
+
+    expect(board.history).toEqual([
+      { matchday: 1, eliminated: [], resolvedAt: '2026-08-21T21:00:00.000Z' },
+    ]);
   });
 });
 

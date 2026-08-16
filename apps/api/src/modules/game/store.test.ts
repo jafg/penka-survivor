@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { ObjectId } from 'mongodb';
 import { Value } from '@sinclair/typebox/value';
-import { MatchSchema, MatchdaySchema, PlayerPickSchema } from '@penka/contracts';
+import { MatchSchema, MatchdaySchema, PlayerPickSchema, ResolutionSchema } from '@penka/contracts';
 import type { MatchDoc, MatchdayDoc } from '../penkas/store';
-import { toMatch, toMatchday, toPlayerPick, type PickDoc } from './store';
+import {
+  toMatch,
+  toMatchday,
+  toPlayerPick,
+  toResolution,
+  type PickDoc,
+  type ResolutionDoc,
+} from './store';
 
 function matchdayDoc(number: number, status: MatchdayDoc['status'] = 'open'): MatchdayDoc {
   return {
@@ -80,6 +87,45 @@ describe('toPlayerPick', () => {
       createdAt: '2026-08-20T10:00:00.000Z',
     });
     expect(Value.Check(PlayerPickSchema, pick)).toBe(true);
+  });
+});
+
+describe('toResolution', () => {
+  it('renders the generated id as hex and the timestamp as ISO-8601', () => {
+    const _id = new ObjectId();
+    const doc: ResolutionDoc = {
+      penkaId: '6a80b60ffda322125df55e5f',
+      matchdayId: 'copa-libertadores:md1',
+      resolvedAt: new Date('2026-08-21T21:00:00.000Z'),
+      eliminatedEntryIds: ['6a80b60ffda322125df55e60'],
+      islandEntryIds: ['6a80b60ffda322125df55e60', '6a80b60ffda322125df55e61'],
+    };
+
+    const resolution = toResolution({ _id, ...doc });
+
+    expect(resolution).toEqual({
+      id: _id.toHexString(),
+      penkaId: '6a80b60ffda322125df55e5f',
+      matchdayId: 'copa-libertadores:md1',
+      resolvedAt: '2026-08-21T21:00:00.000Z',
+      eliminatedEntryIds: ['6a80b60ffda322125df55e60'],
+      islandEntryIds: ['6a80b60ffda322125df55e60', '6a80b60ffda322125df55e61'],
+    });
+    expect(Value.Check(ResolutionSchema, resolution)).toBe(true);
+  });
+
+  it('maps a matchday that eliminated nobody', () => {
+    const resolution = toResolution({
+      _id: new ObjectId(),
+      penkaId: '6a80b60ffda322125df55e5f',
+      matchdayId: 'copa-libertadores:md1',
+      resolvedAt: new Date('2026-08-21T21:00:00.000Z'),
+      eliminatedEntryIds: [],
+      islandEntryIds: [],
+    });
+
+    expect(resolution.eliminatedEntryIds).toEqual([]);
+    expect(Value.Check(ResolutionSchema, resolution)).toBe(true);
   });
 });
 

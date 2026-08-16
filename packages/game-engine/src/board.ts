@@ -1,5 +1,14 @@
-import type { Board, BoardPlayer, Entry, Matchday, PlayerPick } from '@penka/contracts';
-import { computeStandings, tryIsoToEpochMs } from '@penka/game-engine';
+import type {
+  Board,
+  BoardHistoryItem,
+  BoardPlayer,
+  Entry,
+  Matchday,
+  PlayerPick,
+  Resolution,
+} from '@penka/contracts';
+import { computeStandings } from './standings';
+import { tryIsoToEpochMs } from './time';
 
 /**
  * Shown when a player's user document is gone. The board carries no ids, so
@@ -15,6 +24,14 @@ export interface BuildBoardInput {
   displayNames: ReadonlyMap<string, string>;
   /** Every pick recorded for this matchday. Ignored entirely before lock. */
   picks: readonly PlayerPick[];
+  /** Every matchday this penka has already resolved, in any order. */
+  resolutions: readonly Resolution[];
+  /**
+   * matchdayId → number. A resolution points at a matchday by id, and the
+   * history shows a number; the caller has the calendar loaded already, so it
+   * passes the mapping rather than making this function re-derive an id.
+   */
+  matchdayNumbers: ReadonlyMap<string, number>;
   now: Date;
   nextPollInSec: number;
 }
@@ -42,9 +59,21 @@ export function isMatchdayLocked(matchday: Matchday, now: Date): boolean {
  * pick leaves here before lock — however loudly the caller passed one in.
  */
 export function buildBoard(input: BuildBoardInput): Board {
-  const { matchday, entries, displayNames, picks, now, nextPollInSec } = input;
+  const {
+    matchday,
+    entries,
+    displayNames,
+    picks,
+    resolutions,
+    matchdayNumbers,
+    now,
+    nextPollInSec,
+  } = input;
   const isLocked = isMatchdayLocked(matchday, now);
   const pickByEntryId = new Map(picks.map((pick) => [pick.entryId, pick.teamCode]));
+  const nameByEntryId = new Map(
+    entries.map((entry) => [entry.id, displayNames.get(entry.userId) ?? UNKNOWN_PLAYER]),
+  );
 
   const toPlayer = (entry: Entry): BoardPlayer => ({
     displayName: displayNames.get(entry.userId) ?? UNKNOWN_PLAYER,
@@ -63,9 +92,43 @@ export function buildBoard(input: BuildBoardInput): Board {
     isResolved: matchday.status === 'resolved',
     alive: alive.map(toPlayer),
     island: island.map(toPlayer),
-    // Resolutions do not exist yet: an empty history is the truth until a
-    // matchday has actually been resolved, not a placeholder.
-    history: [],
+    history: buildHistory(resolutions, matchdayNumbers, nameByEntryId),
     nextPollInSec,
   };
+}
+
+/**
+ * What happened before this matchday: one row per resolution, oldest first,
+ * naming the players it knocked out. Like the rest of the board it carries
+ * names and never ids — a viewer who is not in the penka reads it too.
+ *
+ * A resolution whose matchday this league cannot number is **dropped**. It can
+ * only happen if a resolution outlived its calendar, and a row claiming the
+ * wrong matchday number is worse than a missing one: players read the history
+ * as the story of the competition they are playing.
+ */
+function buildHistory(
+  resolutions: readonly Resolution[],
+  matchdayNumbers: ReadonlyMap<string, number>,
+  nameByEntryId: ReadonlyMap<string, string>,
+): BoardHistoryItem[] {
+  return resolutions
+    .flatMap((resolution) => {
+      const number = matchdayNumbers.get(resolution.matchdayId);
+      if (number === undefined) {
+        return [];
+      }
+      return [
+        {
+          matchday: number,
+          // An entry the board did not load is still a player who went out;
+          // the placeholder keeps the row true without inventing an identity.
+          eliminated: resolution.eliminatedEntryIds.map(
+            (entryId) => nameByEntryId.get(entryId) ?? UNKNOWN_PLAYER,
+          ),
+          resolvedAt: resolution.resolvedAt,
+        },
+      ];
+    })
+    .sort((a, b) => a.matchday - b.matchday);
 }

@@ -33,6 +33,15 @@ belongs to the contract rather than to whichever app happened to need it first.
   dependency-free derivations of the names above (an id template, a routing key). A
   **game rule** belongs to `@penka/game-engine` and **I/O** belongs to an app; if a
   function here would need either, it is in the wrong package.
+  - `nextPollInSec` (`ops.ts`) is the one function here that is not a name
+    derivation, and it is deliberate. It is a **serving** policy, not a game rule:
+    nothing about it decides who survives, it only says how often a client should
+    come back. It has to be shared because `@penka/api` and `@penka/workers` both
+    write the same board read model, and a cadence that differed between the two
+    would make the interval flap depending on who wrote the entry last. It stays
+    pure and dependency-free like everything else here, so `@penka/game-engine`
+    would take it too — the reason it is here instead is that the engine is for
+    rules of the game and this is a rule of the deployment.
 - Never let an app define its own request/response shape — if a shape is missing,
   add it here first.
 - Never add error codes casually — `ErrorCodes` is the canonical, closed set; extending

@@ -15,6 +15,7 @@ import type { FastifyInstance } from 'fastify';
 import { Value } from '@sinclair/typebox/value';
 import {
   BoardResponseSchema,
+  BoardSchema,
   CurrentMatchdayResponseSchema,
   MyEntryResponseSchema,
   SubmitPickResponseSchema,
@@ -588,6 +589,30 @@ describe('game endpoints', () => {
 
       expect(response.statusCode).toBe(200);
       expect(Value.Check(BoardResponseSchema, response.json())).toBe(true);
+    });
+
+    it('rebuilds a cached board left behind by an older shape of the read model', async () => {
+      // Readable JSON, wrong shape: the entry a previous deploy wrote, still
+      // inside its TTL. The response serializer is compiled from BoardSchema and
+      // THROWS on a missing required property, so passing this through would
+      // answer 500 to every viewer of the penka until the entry expired — and
+      // the poll interval guarantees they come back before it does.
+      const xena = await registerUser(app, 'xena');
+      const penka = await createPenka(app, xena, LEAGUE);
+      const cacheKey = `penka:${penka.id}:board`;
+      const current: Record<string, unknown> = { ...boardOf(await getBoard(app, penka.id)) };
+      delete current.history;
+      await app.redis.set(cacheKey, JSON.stringify({ ...current, standings: [] }));
+
+      const response = await getBoard(app, penka.id);
+
+      expect(response.statusCode).toBe(200);
+      expect(Value.Check(BoardResponseSchema, response.json())).toBe(true);
+      expect(boardOf(response).history).toEqual([]);
+      // Discarded, not merely bypassed: the next poll must not hit it again.
+      expect(Value.Check(BoardSchema, JSON.parse((await app.redis.get(cacheKey)) ?? 'null'))).toBe(
+        true,
+      );
     });
   });
 

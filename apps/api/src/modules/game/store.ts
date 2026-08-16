@@ -1,5 +1,5 @@
 import type { Collection, Db, WithId } from 'mongodb';
-import type { Match, Matchday, PlayerPick } from '@penka/contracts';
+import type { Match, Matchday, PlayerPick, Resolution } from '@penka/contracts';
 import type { MatchDoc, MatchdayDoc } from '../penkas/store';
 
 /**
@@ -19,6 +19,31 @@ export interface PickDoc {
 
 export function picksCollection(db: Db): Collection<PickDoc> {
   return db.collection<PickDoc>('picks');
+}
+
+/**
+ * A resolved matchday, written by `@penka/workers` and read here to build the
+ * board's history. **This app never writes one** — resolution is asynchronous
+ * and the worker owns both the write and the unique `(penkaId, matchdayId)`
+ * index that makes it idempotent.
+ *
+ * The shape is declared twice on purpose, once per process, the same way the
+ * back office declares its own `PenkaDoc`: a collection crossing an app boundary
+ * is a contract about *bytes in Mongo*, and a shared TypeScript interface would
+ * only make the two apps look coupled without making them agree.
+ */
+export interface ResolutionDoc {
+  penkaId: string;
+  matchdayId: string;
+  resolvedAt: Date;
+  /** Entries this matchday knocked out — the ones the history names. */
+  eliminatedEntryIds: string[];
+  /** Every entry on the island once this matchday was applied. */
+  islandEntryIds: string[];
+}
+
+export function resolutionsCollection(db: Db): Collection<ResolutionDoc> {
+  return db.collection<ResolutionDoc>('resolutions');
 }
 
 export async function ensureGameIndexes(db: Db): Promise<void> {
@@ -63,5 +88,16 @@ export function toPlayerPick(doc: WithId<PickDoc>): PlayerPick {
     matchdayId: doc.matchdayId,
     teamCode: doc.teamCode,
     createdAt: doc.createdAt.toISOString(),
+  };
+}
+
+export function toResolution(doc: WithId<ResolutionDoc>): Resolution {
+  return {
+    id: doc._id.toHexString(),
+    penkaId: doc.penkaId,
+    matchdayId: doc.matchdayId,
+    resolvedAt: doc.resolvedAt.toISOString(),
+    eliminatedEntryIds: doc.eliminatedEntryIds,
+    islandEntryIds: doc.islandEntryIds,
   };
 }

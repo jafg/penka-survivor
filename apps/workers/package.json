@@ -7,16 +7,26 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "eslint ."
   },
   "dependencies": {
     "@penka/contracts": "workspace:*",
-    "@penka/game-engine": "workspace:*"
+    "@penka/game-engine": "workspace:*",
+    "@sinclair/typebox": "^0.34.14",
+    "amqplib": "^2.0.1",
+    "ioredis": "^5.4.2",
+    "mongodb": "^6.12.0",
+    "pino": "^10.3.1"
   },
   "devDependencies": {
+    "@penka/api": "workspace:*",
+    "@penka/backoffice-api": "workspace:*",
     "@penka/config": "workspace:*",
     "@types/node": "^22.10.7",
     "eslint": "^9.18.0",
+    "fastify": "^5.2.1",
+    "testcontainers": "^10.16.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"

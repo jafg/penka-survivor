@@ -1,19 +1,29 @@
 import type { FastifyBaseLogger, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { ObjectId, type Db, type WithId } from 'mongodb';
+import { Value } from '@sinclair/typebox/value';
 import {
+  BOARD_CACHE_TTL_SECONDS,
   BoardResponseSchema,
+  BoardSchema,
   CurrentMatchdayResponseSchema,
   MyEntryResponseSchema,
   POLLING_PROFILE_KEY,
   PenkaParamsSchema,
   SubmitPickRequestSchema,
   SubmitPickResponseSchema,
+  boardCacheKey,
+  nextPollInSec,
   toPollingProfile,
   type Board,
   type MyEntry,
 } from '@penka/contracts';
-import { selectCurrentMatchday, validatePick, type PickRejectionCode } from '@penka/game-engine';
+import {
+  buildBoard,
+  selectCurrentMatchday,
+  validatePick,
+  type PickRejectionCode,
+} from '@penka/game-engine';
 import { ApiError } from '../../errors';
 import { isDuplicateKeyError } from '../../lib/mongo-errors';
 import { usersCollection } from '../auth/store';
@@ -28,25 +38,18 @@ import {
   type MatchdayDoc,
   type PenkaDoc,
 } from '../penkas/store';
-import { buildBoard } from './board';
-import { nextPollInSec } from './polling';
-import { ensureGameIndexes, picksCollection, toMatch, toMatchday, toPlayerPick } from './store';
+import {
+  ensureGameIndexes,
+  picksCollection,
+  resolutionsCollection,
+  toMatch,
+  toMatchday,
+  toPlayerPick,
+  toResolution,
+} from './store';
 
 /** See the note in authRoutes: a plain plugin must assert its decorators itself. */
 const REQUIRED_DECORATORS = ['db', 'redis', 'authenticate'] as const;
-
-/**
- * How long a built board stays cached. The board is public and identical for
- * every viewer of a penka, so one entry serves all of them and a poll costs a
- * single Redis read. The staleness this buys errs on the safe side: a board
- * built before lock keeps hiding picks for up to a minute after it, never the
- * other way round.
- */
-const BOARD_CACHE_TTL_SECONDS = 60;
-
-function boardCacheKey(penkaId: string): string {
-  return `penka:${penkaId}:board`;
-}
 
 /** Status per engine rejection. The engine names the reason; the API only picks the code. */
 const PICK_REJECTION_STATUS: Record<PickRejectionCode, number> = {
@@ -112,14 +115,26 @@ async function loadMyEntry(
 /**
  * Matchdays are keyed by league and carry no penkaId: every penka on a league
  * plays the same calendar, so the penka is only ever a way to find the league.
+ *
+ * The whole calendar comes back, not only the current matchday: the board needs
+ * every matchday's number to caption the history rows a resolution points at by
+ * id, and that is the same query.
  */
-async function loadCurrentMatchday(db: Db, leagueId: string): Promise<MatchdayDoc> {
-  const matchdays = await matchdaysCollection(db).find({ leagueId }).toArray();
+async function loadCalendar(db: Db, leagueId: string): Promise<MatchdayDoc[]> {
+  return matchdaysCollection(db).find({ leagueId }).toArray();
+}
+
+/** The lowest-numbered unresolved matchday, or the last one — the engine's rule. */
+function currentMatchdayOf(matchdays: readonly MatchdayDoc[]): MatchdayDoc {
   const current = selectCurrentMatchday(matchdays);
   if (current === undefined) {
     throw new ApiError(404, 'matchday_not_found', 'This league has no calendar yet');
   }
   return current;
+}
+
+async function loadCurrentMatchday(db: Db, leagueId: string): Promise<MatchdayDoc> {
+  return currentMatchdayOf(await loadCalendar(db, leagueId));
 }
 
 /**
@@ -194,13 +209,25 @@ function toMyEntry(entry: WithId<EntryDoc>, myPick: string | null): MyEntry {
   };
 }
 
-/** A poisoned cache entry must not take the board down for everyone. */
+/**
+ * A poisoned cache entry must not take the board down for everyone.
+ *
+ * Unreadable is not the only way an entry goes bad: a deploy that changes
+ * `BoardSchema` leaves perfectly valid JSON of the previous shape behind, alive
+ * for the rest of its TTL. That one is worse than garbage, because the response
+ * serializer is compiled from the schema and throws on a missing required
+ * property — every viewer of the penka would get a 500, and the poll interval
+ * brings them back well inside the minute. So the shape is checked too, and a
+ * stale entry is treated exactly like a miss: dropped and rebuilt.
+ */
 function parseCachedBoard(raw: string): Board | null {
+  let parsed: unknown;
   try {
-    return JSON.parse(raw) as Board;
+    parsed = JSON.parse(raw);
   } catch {
     return null;
   }
+  return Value.Check(BoardSchema, parsed) ? parsed : null;
 }
 
 export const gameRoutes: FastifyPluginAsync = async (instance) => {
@@ -228,15 +255,15 @@ export const gameRoutes: FastifyPluginAsync = async (instance) => {
         if (board !== null) {
           return { board };
         }
-        request.log.warn({ cacheKey }, 'discarding an unreadable cached board');
+        request.log.warn({ cacheKey }, 'discarding a cached board that is unreadable or stale');
       }
 
       const penka = await loadPenka(app.db, request.params.penkaId);
-      const matchday = await loadCurrentMatchday(app.db, penka.leagueId);
-      const entries = await entriesCollection(app.db)
-        .find({ penkaId: penka._id.toHexString() })
-        .toArray();
-      const [displayNames, picks] = await Promise.all([
+      const penkaId = penka._id.toHexString();
+      const matchdays = await loadCalendar(app.db, penka.leagueId);
+      const matchday = currentMatchdayOf(matchdays);
+      const entries = await entriesCollection(app.db).find({ penkaId }).toArray();
+      const [displayNames, picks, resolutions] = await Promise.all([
         loadDisplayNames(app.db, entries),
         // Fetched whether or not the matchday is locked: the builder is the one
         // place that decides what a viewer may see, so it decides here too.
@@ -246,6 +273,10 @@ export const gameRoutes: FastifyPluginAsync = async (instance) => {
             entryId: { $in: entries.map((entry) => entry._id.toHexString()) },
           })
           .toArray(),
+        // Written by @penka/workers, never here. Served by the prefix of the
+        // unique (penkaId, matchdayId) index the worker owns; before the first
+        // resolution the collection is empty, so the scan costs nothing.
+        resolutionsCollection(app.db).find({ penkaId }).toArray(),
       ]);
 
       const now = new Date();
@@ -254,6 +285,8 @@ export const gameRoutes: FastifyPluginAsync = async (instance) => {
         entries: entries.map(toEntry),
         displayNames,
         picks: picks.map(toPlayerPick),
+        resolutions: resolutions.map(toResolution),
+        matchdayNumbers: new Map(matchdays.map((each) => [each._id, each.number])),
         now,
         nextPollInSec: nextPollInSec({
           profile: toPollingProfile(await app.redis.get(POLLING_PROFILE_KEY)),

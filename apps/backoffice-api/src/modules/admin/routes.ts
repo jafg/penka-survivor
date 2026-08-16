@@ -22,7 +22,7 @@ import type { ResolveRejectionCode } from '@penka/game-engine';
 import { ApiError } from '../../errors';
 import { currentMatchdayIds, summarizePools } from './pools';
 import { countPending, whyNotResolvable } from './preconditions';
-import { requestResolution } from './resolve';
+import { claimResolveRequest, clearResolveRequest, requestResolution } from './resolve';
 import {
   ensureAdminIndexes,
   entriesCollection,
@@ -288,12 +288,23 @@ export const adminRoutes: FastifyPluginAsync = async (instance) => {
         throw new ApiError(409, rejection, RESOLVE_REJECTION_MESSAGE[rejection]);
       }
 
+      // The request is claimed BEFORE the penkas are read, and the read is
+      // filtered by the same instant the workers count with — so the penkas that
+      // get a command and the penkas the matchday waits for are one set, on the
+      // first press and on every republish. See `claimResolveRequest`.
+      const { requestedAt, claimed } = await claimResolveRequest(app.db, matchday._id, new Date());
+
       // Resolution fans out over the LEAGUE: every penka playing this calendar
       // resolves the same matchday, each with its own settings and entries.
-      const penkas = await penkasCollection(app.db).find({ leagueId }).toArray();
+      const penkas = await penkasCollection(app.db)
+        .find({ leagueId, createdAt: { $lte: requestedAt } })
+        .toArray();
       if (penkas.length === 0) {
         // Publishing nothing and marking the matchday requested would leave it
         // looking done forever, so say plainly that there is nobody to resolve.
+        if (claimed) {
+          await clearResolveRequest(app.db, request.log, matchday._id);
+        }
         throw new ApiError(
           404,
           ErrorCodes.penka_not_found,
@@ -301,7 +312,6 @@ export const adminRoutes: FastifyPluginAsync = async (instance) => {
         );
       }
 
-      const requestedAt = new Date();
       const commands: ResolveMatchdayCommand[] = penkas.map((penka) => ({
         penkaId: penka._id.toHexString(),
         leagueId,
@@ -314,7 +324,7 @@ export const adminRoutes: FastifyPluginAsync = async (instance) => {
         publisher: app.publisher,
         matchdayId: matchday._id,
         commands,
-        requestedAt,
+        claimed,
       });
 
       // `queued`, never `resolved`: the workers do the resolving, and the
