@@ -1,0 +1,120 @@
+/*
+ * Forms — the one part of the app the prototype does not cover.
+ *
+ * It opens on a player who is already signed in and already in a penka, so
+ * there is no login, no register and no join screen to copy. Everything here is
+ * therefore built out of the tokens and the primitives that DO exist: the same
+ * surfaces, borders, radii and type as a `.match-card`, so a screen the
+ * prototype never drew still looks like it came from the same hand.
+ *
+ * Not one literal colour, radius or shadow below — see `tokens.css`.
+ */
+
+.form-screen {
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  color: var(--fg-muted);
+}
+
+.field-input {
+  width: 100%;
+  padding: 13px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.field-input::placeholder {
+  color: var(--fg-dim);
+}
+
+.field-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.field-input:disabled {
+  color: var(--fg-dim);
+  cursor: not-allowed;
+}
+
+/*
+ * The join code. Wide tracking and a big face because it is read off someone
+ * else's phone and typed in one go.
+ */
+.field-input--code {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.4em;
+  /* The letter-spacing pads the right of the last glyph; this re-centres it. */
+  text-indent: 0.4em;
+}
+
+.form-error {
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--card-lost);
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.form-actions {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.form-aside {
+  margin: 18px 0 0;
+  color: var(--fg-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/*
+ * `.btn` is a `<button>` everywhere in the prototype, so its rule never had to
+ * say this. The app also hangs it on links — "Sumarme con un código", "Crear
+ * una Penka", "Creá una" — and an anchor underlines its own label, which no
+ * button does. The declaration lives here rather than next to `.btn` so
+ * `base.css` stays the prototype's stylesheet, declaration for declaration.
+ */
+a.btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+.form-aside a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.form-aside a:hover {
+  text-decoration: underline;
+}
