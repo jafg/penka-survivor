@@ -1,9 +1,16 @@
 # Codebase conventions — factual inventory
 
-Read-only audit of `penka-survivor` at commit `c56bf74` (working tree clean).
+Read-only audit of `penka-survivor` at commit `f9e9d03`, plus the uncommitted final
+integration pass (`e2e/`, `scripts/`, `README.md`, `.env.example`, `docs/ai-development-log.md`,
+and the edits to `package.json`, `turbo.json`, `pnpm-workspace.yaml`, `.gitignore`).
+
 Every claim below cites `file:line` and quotes the code as it exists. Nothing here is
 inferred from naming or from `CLAUDE.md`; where something does not exist it is recorded as
 **NOT FOUND** in the last section.
+
+This supersedes the previous edition, which audited `c56bf74` and therefore predated the
+game module, the `picks` and `resolutions` collections, the shared id builders,
+`@penka/backoffice-api`, `@penka/workers`, both Vue apps, and the `e2e` workspace.
 
 ---
 
@@ -21,12 +28,15 @@ inferred from naming or from `CLAUDE.md`; where something does not exist it is r
   },
 ```
 
-`packages/contracts/src/index.ts:1-8` — the complete entrypoint, verbatim:
+`packages/contracts/src/index.ts:1-11` — the complete entrypoint, verbatim:
 
 ```ts
 export * from './errors';
 export * from './domain';
 export * from './health';
+export * from './ids';
+export * from './messaging';
+export * from './ops';
 export * from './api/auth';
 export * from './api/catalog';
 export * from './api/penkas';
@@ -34,346 +44,148 @@ export * from './api/game';
 export * from './api/admin';
 ```
 
-`./strict` is **not** re-exported. `StrictObject` is defined at
-`packages/contracts/src/strict.ts:7` and is reachable only by deep import:
+Three modules exist in `src/` and are **not** re-exported:
 
-```ts
-export function StrictObject<T extends TProperties>(properties: T, options?: ObjectOptions) {
-```
-
-`packages/contracts/src/test-support/fixtures.ts` is also not re-exported from the
-entrypoint; it is imported by relative path from contract tests only
-(`packages/contracts/src/domain.test.ts:21`, `packages/contracts/src/api/game.test.ts:11`,
-and four sibling test files).
+| File                                        | Why it is not exported                                                                   |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `packages/contracts/src/strict.ts`          | `StrictObject` is the internal schema factory every module builds on.                     |
+| `packages/contracts/src/test-support/fixtures.ts` | Test-only.                                                                           |
+| `packages/contracts/src/**/*.test.ts`       | Test-only.                                                                                 |
 
 ### 1.2 Full export list
 
-Every `^export` in each re-exported module, with its line.
+Grouped by source file, in the order `index.ts` re-exports them.
 
-**`packages/contracts/src/errors.ts`**
+**`errors.ts`** — `ErrorCodes` (`:9`), `ErrorCode` (`:37`), `ErrorCodeSchema` (`:39`),
+`ApiErrorSchema` (`:44`), `ApiError` (`:50`).
 
-| Line | Export |
-| --- | --- |
-| 9 | `const ErrorCodes` |
-| 37 | `type ErrorCode` |
-| 39 | `const ErrorCodeSchema` |
-| 44 | `const ApiErrorSchema` |
-| 50 | `type ApiError` |
+**`domain.ts`** — `IdSchema` (`:5`), `IsoDateTimeSchema` (`:8`), `EmailSchema` (`:12`),
+`RegionSchema` (`:17`), `Region` (`:22`), `TeamCodeSchema` (`:32`), `TeamSchema` (`:38`),
+`Team` (`:44`), `LeagueSchema` (`:46`), `League` (`:52`), `FixtureMatchupSchema` (`:55`),
+`FixtureMatchup` (`:59`), `FixtureTemplateMatchdaySchema` (`:61`),
+`FixtureTemplateMatchday` (`:67`), `FixtureTemplateSchema` (`:74`), `FixtureTemplate` (`:78`),
+`MatchOutcomeSchema` (`:82`), `MatchOutcome` (`:87`), `MatchSchema` (`:96`), `Match` (`:104`),
+`MatchdayStatusSchema` (`:106`), `MatchdayStatus` (`:111`), `MatchdaySchema` (`:113`),
+`Matchday` (`:120`), `UserSchema` (`:125`), `User` (`:131`), `PenkaSettingsSchema` (`:135`),
+`PenkaSettings` (`:140`), `PenkaSchema` (`:142`), `Penka` (`:150`), `EntryStatusSchema` (`:152`),
+`EntryStatus` (`:153`), `EntrySchema` (`:155`), `Entry` (`:165`), `PlayerPickSchema` (`:168`),
+`PlayerPick` (`:176`), `ResolutionSchema` (`:178`), `Resolution` (`:186`),
+`BoardPlayerSchema` (`:200`), `BoardPlayer` (`:208`), `BoardHistoryItemSchema` (`:210`),
+`BoardHistoryItem` (`:215`), `BoardSchema` (`:230`), `Board` (`:240`), `MyEntrySchema` (`:243`),
+`MyEntry` (`:249`).
 
-**`packages/contracts/src/domain.ts`**
+**`health.ts`** — `HealthResponseSchema` (`:4`), `HealthResponse` (`:8`).
 
-| Line | Export |
-| --- | --- |
-| 5 | `const IdSchema` |
-| 8 | `const IsoDateTimeSchema` |
-| 12 | `const EmailSchema` |
-| 17 | `const RegionSchema` |
-| 22 | `type Region` |
-| 32 | `const TeamCodeSchema` |
-| 38 | `const TeamSchema` |
-| 44 | `type Team` |
-| 46 | `const LeagueSchema` |
-| 52 | `type League` |
-| 55 | `const FixtureMatchupSchema` |
-| 59 | `type FixtureMatchup` |
-| 61 | `const FixtureTemplateMatchdaySchema` |
-| 67 | `type FixtureTemplateMatchday` |
-| 74 | `const FixtureTemplateSchema` |
-| 78 | `type FixtureTemplate` |
-| 82 | `const MatchOutcomeSchema` |
-| 87 | `type MatchOutcome` |
-| 96 | `const MatchSchema` |
-| 104 | `type Match` |
-| 106 | `const MatchdayStatusSchema` |
-| 111 | `type MatchdayStatus` |
-| 113 | `const MatchdaySchema` |
-| 120 | `type Matchday` |
-| 125 | `const UserSchema` |
-| 131 | `type User` |
-| 135 | `const PenkaSettingsSchema` |
-| 140 | `type PenkaSettings` |
-| 142 | `const PenkaSchema` |
-| 150 | `type Penka` |
-| 152 | `const EntryStatusSchema` |
-| 153 | `type EntryStatus` |
-| 155 | `const EntrySchema` |
-| 165 | `type Entry` |
-| 168 | `const PlayerPickSchema` |
-| 176 | `type PlayerPick` |
-| 178 | `const ResolutionSchema` |
-| 186 | `type Resolution` |
-| 191 | `const BoardPlayerSchema` |
-| 195 | `type BoardPlayer` |
-| 197 | `const BoardHistoryItemSchema` |
-| 202 | `type BoardHistoryItem` |
-| 209 | `const BoardSchema` |
-| 219 | `type Board` |
-| 222 | `const MyEntrySchema` |
-| 228 | `type MyEntry` |
+**`ids.ts`** — `matchdayId` (`:17`), `matchId` (`:22`).
 
-**`packages/contracts/src/health.ts`** — 4: `const HealthResponseSchema`; 8: `type HealthResponse`.
+**`messaging.ts`** — `SURVIVOR_COMMANDS_EXCHANGE` (`:17`), `RESOLUTION_QUEUE` (`:20`),
+`RESOLUTION_BINDING_KEY` (`:27`), `SURVIVOR_DLX` (`:30`), `RESOLUTION_DLQ` (`:31`),
+`resolveRoutingKey` (`:34`), `resolveMessageId` (`:45`), `ResolveMatchdayCommandSchema` (`:55`),
+`ResolveMatchdayCommand` (`:61`).
 
-**`packages/contracts/src/api/auth.ts`**
+**`ops.ts`** — `POLLING_PROFILE_KEY` (`:19`), `toPollingProfile` (`:26`), `boardCacheKey` (`:37`),
+`BOARD_CACHE_TTL_SECONDS` (`:52`), `NEAR_LOCK_MS` (`:58`), `NextPollInput` (`:60`),
+`nextPollInSec` (`:80`).
 
-| Line | Export |
-| --- | --- |
-| 5 | `const RefreshTokenSchema` |
-| 7 | `const AuthTokensSchema` |
-| 11 | `type AuthTokens` |
-| 14 | `const RegisterRequestSchema` |
-| 19 | `type RegisterRequest` |
-| 21 | `const RegisterResponseSchema` |
-| 25 | `type RegisterResponse` |
-| 28 | `const LoginRequestSchema` |
-| 32 | `type LoginRequest` |
-| 34 | `const LoginResponseSchema` |
-| 38 | `type LoginResponse` |
-| 41 | `const RefreshRequestSchema` |
-| 44 | `type RefreshRequest` |
-| 46 | `const RefreshResponseSchema` |
-| 49 | `type RefreshResponse` |
-| 52 | `const MeResponseSchema` |
-| 55 | `type MeResponse` |
+**`api/auth.ts`** — `RefreshTokenSchema` (`:5`), `AuthTokensSchema` (`:7`), `AuthTokens` (`:11`),
+`RegisterRequestSchema` (`:14`), `RegisterRequest` (`:19`), `RegisterResponseSchema` (`:21`),
+`RegisterResponse` (`:25`), `LoginRequestSchema` (`:28`), `LoginRequest` (`:32`),
+`LoginResponseSchema` (`:34`), `LoginResponse` (`:38`), `RefreshRequestSchema` (`:41`),
+`RefreshRequest` (`:44`), `RefreshResponseSchema` (`:46`), `RefreshResponse` (`:49`),
+`MeResponseSchema` (`:52`), `MeResponse` (`:55`).
 
-**`packages/contracts/src/api/catalog.ts`**
+**`api/catalog.ts`** — `LeagueParamsSchema` (`:5`), `LeagueParams` (`:8`),
+`LeagueSummarySchema` (`:11`), `LeagueSummary` (`:17`), `ListLeaguesQuerySchema` (`:21`),
+`ListLeaguesQuery` (`:24`), `ListLeaguesResponseSchema` (`:26`), `ListLeaguesResponse` (`:29`),
+`LeagueDetailResponseSchema` (`:32`), `LeagueDetailResponse` (`:37`).
 
-| Line | Export |
-| --- | --- |
-| 5 | `const LeagueParamsSchema` |
-| 8 | `type LeagueParams` |
-| 11 | `const LeagueSummarySchema` |
-| 17 | `type LeagueSummary` |
-| 21 | `const ListLeaguesQuerySchema` |
-| 24 | `type ListLeaguesQuery` |
-| 26 | `const ListLeaguesResponseSchema` |
-| 29 | `type ListLeaguesResponse` |
-| 32 | `const LeagueDetailResponseSchema` |
-| 37 | `type LeagueDetailResponse` |
+**`api/penkas.ts`** — `DEFAULT_PENKA_SETTINGS` (`:6`), `CreatePenkaSettingsSchema` (`:10`),
+`CreatePenkaSettings` (`:16`), `CreatePenkaRequestSchema` (`:18`), `CreatePenkaRequest` (`:23`),
+`CreatePenkaResponseSchema` (`:25`), `CreatePenkaResponse` (`:28`), `JoinPenkaRequestSchema` (`:31`),
+`JoinPenkaRequest` (`:40`), `JoinPenkaResponseSchema` (`:42`), `JoinPenkaResponse` (`:46`),
+`MyPenkaItemSchema` (`:49`), `MyPenkaItem` (`:53`), `MyPenkasResponseSchema` (`:55`),
+`MyPenkasResponse` (`:58`).
 
-**`packages/contracts/src/api/penkas.ts`**
+**`api/game.ts`** — `PenkaParamsSchema` (`:12`), `PenkaParams` (`:15`), `BoardResponseSchema` (`:18`),
+`BoardResponse` (`:21`), `MyEntryResponseSchema` (`:24`), `MyEntryResponse` (`:27`),
+`CurrentMatchdayResponseSchema` (`:30`), `CurrentMatchdayResponse` (`:34`),
+`SubmitPickRequestSchema` (`:37`), `SubmitPickRequest` (`:40`), `SubmitPickResponseSchema` (`:42`),
+`SubmitPickResponse` (`:45`).
 
-| Line | Export |
-| --- | --- |
-| 6 | `const DEFAULT_PENKA_SETTINGS` |
-| 10 | `const CreatePenkaSettingsSchema` |
-| 16 | `type CreatePenkaSettings` |
-| 18 | `const CreatePenkaRequestSchema` |
-| 23 | `type CreatePenkaRequest` |
-| 25 | `const CreatePenkaResponseSchema` |
-| 28 | `type CreatePenkaResponse` |
-| 31 | `const JoinPenkaRequestSchema` |
-| 40 | `type JoinPenkaRequest` |
-| 42 | `const JoinPenkaResponseSchema` |
-| 46 | `type JoinPenkaResponse` |
-| 49 | `const MyPenkaItemSchema` |
-| 53 | `type MyPenkaItem` |
-| 55 | `const MyPenkasResponseSchema` |
-| 58 | `type MyPenkasResponse` |
-
-**`packages/contracts/src/api/game.ts`**
-
-| Line | Export |
-| --- | --- |
-| 12 | `const PenkaParamsSchema` |
-| 15 | `type PenkaParams` |
-| 18 | `const BoardResponseSchema` |
-| 21 | `type BoardResponse` |
-| 24 | `const MyEntryResponseSchema` |
-| 27 | `type MyEntryResponse` |
-| 30 | `const CurrentMatchdayResponseSchema` |
-| 34 | `type CurrentMatchdayResponse` |
-| 37 | `const SubmitPickRequestSchema` |
-| 40 | `type SubmitPickRequest` |
-| 42 | `const SubmitPickResponseSchema` |
-| 45 | `type SubmitPickResponse` |
-
-**`packages/contracts/src/api/admin.ts`**
-
-| Line | Export |
-| --- | --- |
-| 12 | `const PollingProfileSchema` |
-| 17 | `type PollingProfile` |
-| 19 | `const MatchdayParamsSchema` |
-| 22 | `type MatchdayParams` |
-| 25 | `const AdminPoolSummarySchema` |
-| 31 | `type AdminPoolSummary` |
-| 33 | `const AdminPoolsResponseSchema` |
-| 36 | `type AdminPoolsResponse` |
-| 39 | `const AdminMatchdayDetailResponseSchema` |
-| 43 | `type AdminMatchdayDetailResponse` |
-| 46 | `const SetResultRequestSchema` |
-| 50 | `type SetResultRequest` |
-| 52 | `const SetResultResponseSchema` |
-| 55 | `type SetResultResponse` |
-| 58 | `const CloseMatchdayResponseSchema` |
-| 61 | `type CloseMatchdayResponse` |
-| 64 | `const ResolveMatchdayResponseSchema` |
-| 68 | `type ResolveMatchdayResponse` |
-| 71 | `const SetPollingProfileRequestSchema` |
-| 74 | `type SetPollingProfileRequest` |
-| 76 | `const SetPollingProfileResponseSchema` |
-| 79 | `type SetPollingProfileResponse` |
+**`api/admin.ts`** — `PollingProfileSchema` (`:12`), `PollingProfile` (`:17`),
+`LeagueMatchdayParamsSchema` (`:26`), `LeagueMatchdayParams` (`:30`), `MatchParamsSchema` (`:38`),
+`MatchParams` (`:41`), `AdminPoolSummarySchema` (`:44`), `AdminPoolSummary` (`:54`),
+`AdminPoolsResponseSchema` (`:56`), `AdminPoolsResponse` (`:59`),
+`AdminMatchdayDetailResponseSchema` (`:62`), `AdminMatchdayDetailResponse` (`:68`),
+`SetResultRequestSchema` (`:71`), `SetResultRequest` (`:74`), `SetResultResponseSchema` (`:82`),
+`SetResultResponse` (`:87`), `CloseMatchdayResponseSchema` (`:90`), `CloseMatchdayResponse` (`:93`),
+`ResolveMatchdayResponseSchema` (`:96`), `ResolveMatchdayResponse` (`:100`),
+`SetPollingProfileRequestSchema` (`:103`), `SetPollingProfileRequest` (`:106`),
+`SetPollingProfileResponseSchema` (`:108`), `SetPollingProfileResponse` (`:111`).
 
 ### 1.3 Collisions with TypeScript utility types
 
-Grep over `packages/contracts/src` for exports named exactly `Pick`, `Omit`, `Record`,
-`Exclude`, `Partial`, `Readonly` returns **no matches** (exit 1). No exported schema or
-type shadows a TypeScript utility type.
-
-Exports whose names *contain* one of those words:
-
-- `packages/contracts/src/domain.ts:168` `export const PlayerPickSchema`
-- `packages/contracts/src/domain.ts:176` `export type PlayerPick`
-- `packages/contracts/src/api/game.ts:37` `export const SubmitPickRequestSchema`
-- `packages/contracts/src/api/game.ts:40` `export type SubmitPickRequest`
-- `packages/contracts/src/api/game.ts:42` `export const SubmitPickResponseSchema`
-- `packages/contracts/src/api/game.ts:45` `export type SubmitPickResponse`
-
-**A pick is called `PlayerPick`** (schema: `PlayerPickSchema`). Not `Pick`.
-`packages/contracts/src/domain.ts:167` states the reason in the source:
+One export is renamed to avoid shadowing a built-in utility type.
+`packages/contracts/src/domain.ts:167-176`
 
 ```ts
 // Named PlayerPick (not Pick) so the exported type never shadows TypeScript's Pick<T, K>.
+export const PlayerPickSchema = StrictObject({
+  id: IdSchema,
+  entryId: IdSchema,
+  matchdayId: IdSchema,
+  /** The team backed this matchday, as a catalog code (see MatchSchema). */
+  teamCode: TeamCodeSchema,
+  createdAt: IsoDateTimeSchema,
+});
+export type PlayerPick = Static<typeof PlayerPickSchema>;
 ```
 
-One non-exported local helper is named `omit`: `packages/contracts/src/test-support/fixtures.ts:6`
-`export function omit<T extends object, K extends keyof T>(source: T, key: K): Omit<T, K> {` —
-in `test-support`, which is not re-exported from the entrypoint (§1.1).
+`Record`, `Omit`, `Exclude`, `Extract`, `Partial` and `Required` are **not** exported from
+`@penka/contracts` under any name. `Entry`, `Match`, `Team` and `League` collide with nothing
+in `lib.es5.d.ts`.
 
 ### 1.4 `TeamCodeSchema`, verbatim
 
-`packages/contracts/src/domain.ts:24-36`:
+`packages/contracts/src/domain.ts:32-36`
 
 ```ts
-/**
- * Stable short code, unique within its league. The catalog is fixed data, so a
- * code — not a generated id — is how a team is referenced inside a league.
- *
- * The alphabet is uppercase letters and digits only: storage derives document
- * ids by joining parts with `:` and `-` (`la-liga:md1:RIV-BOC`), so a code
- * carrying a separator would make those ids ambiguous.
- */
 export const TeamCodeSchema = Type.String({
-  minLength: 2,
-  maxLength: 5,
   pattern: '^[A-Z0-9]{2,5}$',
+  description: 'Catalog team code, unique inside a league (RIV, BOC, RMA).',
 });
 ```
 
-### 1.5 Requested request/response schemas, verbatim
-
-**Submit pick** — `packages/contracts/src/api/game.ts:36-45`:
-
-```ts
-// POST /penkas/:penkaId/picks — the team is named by catalog code (see MatchSchema)
-export const SubmitPickRequestSchema = StrictObject({
-  teamCode: TeamCodeSchema,
-});
-export type SubmitPickRequest = Static<typeof SubmitPickRequestSchema>;
-
-export const SubmitPickResponseSchema = StrictObject({
-  myEntry: MyEntrySchema,
-});
-export type SubmitPickResponse = Static<typeof SubmitPickResponseSchema>;
-```
-
-The route path is a comment only; see §3.5 for the actual route table.
-
-**Create penka** — `packages/contracts/src/api/penkas.ts:5-28`:
-
-```ts
-/** Applied when a create request leaves a setting out. */
-export const DEFAULT_PENKA_SETTINGS = { lives: 2, islandEnabled: true } as const;
-
-// POST /penkas
-/** Both settings are optional on the way in; the stored penka always has both. */
-export const CreatePenkaSettingsSchema = StrictObject({
-  lives: Type.Optional(
-    Type.Integer({ minimum: 1, maximum: 3, default: DEFAULT_PENKA_SETTINGS.lives }),
-  ),
-  islandEnabled: Type.Optional(Type.Boolean({ default: DEFAULT_PENKA_SETTINGS.islandEnabled })),
-});
-export type CreatePenkaSettings = Static<typeof CreatePenkaSettingsSchema>;
-
-export const CreatePenkaRequestSchema = StrictObject({
-  name: Type.String({ minLength: 1 }),
-  leagueId: IdSchema,
-  settings: CreatePenkaSettingsSchema,
-});
-export type CreatePenkaRequest = Static<typeof CreatePenkaRequestSchema>;
-
-export const CreatePenkaResponseSchema = StrictObject({
-  penka: PenkaSchema,
-});
-export type CreatePenkaResponse = Static<typeof CreatePenkaResponseSchema>;
-```
-
-Note the shape as written: `settings` itself is **not** `Type.Optional`; only the two
-fields inside it are.
-
-**Join penka** — `packages/contracts/src/api/penkas.ts:30-46`:
-
-```ts
-// POST /penkas/join
-export const JoinPenkaRequestSchema = StrictObject({
-  /**
-   * Deliberately loose: the route answers 404 invalid_join_code for unknown AND
-   * malformed codes, so a guesser cannot tell "wrong shape" from "wrong code".
-   * A 400 from schema validation would give that away. The cap only stops a
-   * client from posting a novel as a join code.
-   */
-  joinCode: Type.String({ maxLength: 64 }),
-});
-export type JoinPenkaRequest = Static<typeof JoinPenkaRequestSchema>;
-
-export const JoinPenkaResponseSchema = StrictObject({
-  penka: PenkaSchema,
-  entry: EntrySchema,
-});
-export type JoinPenkaResponse = Static<typeof JoinPenkaResponseSchema>;
-```
-
-**List my penkas** — `packages/contracts/src/api/penkas.ts:48-58`:
-
-```ts
-// GET /me/penkas
-export const MyPenkaItemSchema = StrictObject({
-  penka: PenkaSchema,
-  entry: EntrySchema,
-});
-export type MyPenkaItem = Static<typeof MyPenkaItemSchema>;
-
-export const MyPenkasResponseSchema = StrictObject({
-  penkas: Type.Array(MyPenkaItemSchema),
-});
-export type MyPenkasResponse = Static<typeof MyPenkasResponseSchema>;
-```
-
-There is no request schema for this endpoint.
-
-**Board** — response envelope at `packages/contracts/src/api/game.ts:17-21`, params at
-`packages/contracts/src/api/game.ts:12-15`:
-
-```ts
-export const PenkaParamsSchema = StrictObject({
-  penkaId: IdSchema,
-});
-export type PenkaParams = Static<typeof PenkaParamsSchema>;
-
-// GET /penkas/:penkaId/board — public read model, no personal data (see BoardSchema)
-export const BoardResponseSchema = StrictObject({
-  board: BoardSchema,
-});
-```
-
-The payload itself, `packages/contracts/src/domain.ts:204-219`:
+A team is addressed by this code everywhere on the wire — there is no generated team id in
+the repository. `apps/api/src/modules/penkas/store.ts:36-40` records the reason:
 
 ```ts
 /**
- * Public board read model. It is shared by every viewer of a penka and must
- * NEVER carry personal data (no picks, no used teams, no emails, no ids that
- * identify a viewer). Personal state travels separately as MyEntry.
+ * Teams are stored as catalog codes, never as generated ids. A match belongs to
+ * one league, and codes are unique inside a league, so a code identifies a team
+ * unambiguously — the MVP creates no separate team documents.
  */
+```
+
+### 1.5 Read models: what is public and what is personal
+
+`packages/contracts/src/domain.ts:200-207` — `BoardPlayerSchema`, with the pre-lock rule
+stated in the contract itself:
+
+```ts
+export const BoardPlayerSchema = StrictObject({
+  displayName: Type.String({ minLength: 1 }),
+  lives: Type.Integer({ minimum: 0 }),
+  /** Correct picks so far. Island players keep scoring, so this is what they play for. */
+  points: Type.Integer({ minimum: 0 }),
+  /** Hidden before lock, revealed after — see the note above. */
+  pick: Type.Union([TeamCodeSchema, Type.Null()]),
+});
+```
+
+`packages/contracts/src/domain.ts:230-239` — `BoardSchema`:
+
+```ts
 export const BoardSchema = StrictObject({
   matchday: Type.Integer({ minimum: 1 }),
   lockAt: IsoDateTimeSchema,
@@ -384,62 +196,28 @@ export const BoardSchema = StrictObject({
   history: Type.Array(BoardHistoryItemSchema),
   nextPollInSec: Type.Integer({ minimum: 0 }),
 });
-export type Board = Static<typeof BoardSchema>;
 ```
 
-with `packages/contracts/src/domain.ts:191-202`:
+`packages/contracts/src/domain.ts:243-248` — `MyEntrySchema`, the personal delta:
 
 ```ts
-/** What the public board shows about a player: display name and lives, nothing else. */
-export const BoardPlayerSchema = StrictObject({
-  displayName: Type.String({ minLength: 1 }),
-  lives: Type.Integer({ minimum: 0 }),
-});
-export type BoardPlayer = Static<typeof BoardPlayerSchema>;
-
-export const BoardHistoryItemSchema = StrictObject({
-  matchday: Type.Integer({ minimum: 1 }),
-  eliminated: Type.Array(Type.String({ minLength: 1 })),
-  resolvedAt: IsoDateTimeSchema,
-});
-```
-
-`BoardHistoryItemSchema.eliminated` is `Type.Array(Type.String({ minLength: 1 }))` — not
-`IdSchema`, not `TeamCodeSchema`.
-
-**My entry** — envelope at `packages/contracts/src/api/game.ts:23-27`:
-
-```ts
-// GET /penkas/:penkaId/me — the authenticated player's personal delta
-export const MyEntryResponseSchema = StrictObject({
-  myEntry: MyEntrySchema,
-});
-export type MyEntryResponse = Static<typeof MyEntryResponseSchema>;
-```
-
-payload at `packages/contracts/src/domain.ts:221-228`:
-
-```ts
-/** Personal delta layered on top of the public board for the authenticated player. */
 export const MyEntrySchema = StrictObject({
   lives: Type.Integer({ minimum: 0 }),
   status: EntryStatusSchema,
   myPick: Type.Union([TeamCodeSchema, Type.Null()]),
   usedTeams: Type.Array(TeamCodeSchema),
 });
-export type MyEntry = Static<typeof MyEntrySchema>;
 ```
+
+The split is enforced by the schemas being closed (`StrictObject`) and by
+`removeAdditional: false` in both apps (§3.1, §3.7): a board that grew a `myPick` field would
+fail response validation rather than leak.
 
 ### 1.6 Complete error-code list
 
-`packages/contracts/src/errors.ts:4-41`, verbatim:
+`packages/contracts/src/errors.ts:9-33`, verbatim and exhaustive — 22 codes:
 
 ```ts
-/**
- * Canonical error codes — the exhaustive, closed set. Every API error response
- * uses one of these; never invent ad-hoc codes in an app. Extending this set is
- * a deliberate, reviewed decision.
- */
 export const ErrorCodes = {
   invalid_credentials: 'invalid_credentials',
   email_taken: 'email_taken',
@@ -467,26 +245,131 @@ export const ErrorCodes = {
   validation_failed: 'validation_failed',
   internal: 'internal',
 } as const;
-
-export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
-
-export const ErrorCodeSchema = Type.Union(
-  Object.values(ErrorCodes).map((code) => Type.Literal(code)),
-);
 ```
 
-22 codes. The error envelope, `packages/contracts/src/errors.ts:43-50`:
+`packages/contracts/src/errors.ts:44-48` — the envelope every non-2xx response uses:
 
 ```ts
-/** Canonical error envelope for every non-2xx API response. */
 export const ApiErrorSchema = StrictObject({
   status: Type.Integer({ minimum: 400, maximum: 599 }),
   code: ErrorCodeSchema,
   message: Type.String({ minLength: 1 }),
 });
-
-export type ApiError = Static<typeof ApiErrorSchema>;
 ```
+
+### 1.7 Derived ids
+
+`packages/contracts/src/ids.ts` is 24 lines; the whole file is the convention.
+
+```ts
+/** `copa-libertadores:md1` */
+export function matchdayId(leagueId: string, number: number): string {
+  return `${leagueId}:md${number}`;
+}
+
+/** `copa-libertadores:md1:RIV-BOC` — home team first, so the id is not symmetric. */
+export function matchId(matchdayId: string, homeTeamCode: string, awayTeamCode: string): string {
+  return `${matchdayId}:${homeTeamCode}-${awayTeamCode}`;
+}
+```
+
+`packages/contracts/src/ids.ts:1-13` states why they live in the contract and what the colon
+costs clients:
+
+```
+ * They live in the contract because they cross apps: the public API writes
+ * them, the back office addresses them in its routes, and the workers resolve
+ * them off a message. A shape only one app knows how to build is not derived —
+ * it is a private convention that happens to be readable.
+ *
+ * The separator is a colon, so an id is legal in a URL path segment but must be
+ * `encodeURIComponent`-ed by clients — see the back office's route notes.
+```
+
+### 1.8 Messaging names and the command body
+
+`packages/contracts/src/messaging.ts:17-31`
+
+```ts
+export const SURVIVOR_COMMANDS_EXCHANGE = 'survivor.commands';
+export const RESOLUTION_QUEUE = 'matchday.resolution';
+export const RESOLUTION_BINDING_KEY = 'matchday.resolve.*';
+export const SURVIVOR_DLX = 'survivor.dlx';
+export const RESOLUTION_DLQ = 'matchday.resolution.dlq';
+```
+
+`packages/contracts/src/messaging.ts:34-47`
+
+```ts
+export function resolveRoutingKey(penkaId: string): string {
+  return `matchday.resolve.${penkaId}`;
+}
+
+export function resolveMessageId(penkaId: string, matchday: number): string {
+  return `resolve:${penkaId}:${matchday}`;
+}
+```
+
+`packages/contracts/src/messaging.ts:55-61`
+
+```ts
+export const ResolveMatchdayCommandSchema = StrictObject({
+  penkaId: IdSchema,
+  leagueId: IdSchema,
+  matchday: Type.Integer({ minimum: 1 }),
+  requestedAt: IsoDateTimeSchema,
+});
+export type ResolveMatchdayCommand = Static<typeof ResolveMatchdayCommandSchema>;
+```
+
+The matchday is addressed by **number**, not by id — `packages/contracts/src/messaging.ts:49-54`
+gives the reason: "a number cannot silently point at a calendar the penka is not on".
+
+### 1.9 Operational keys
+
+`packages/contracts/src/ops.ts:19` — one global key, not one per penka:
+
+```ts
+export const POLLING_PROFILE_KEY = 'ops:pollingProfile';
+```
+
+`packages/contracts/src/ops.ts:10-13` records the rejected alternative verbatim:
+
+```
+ * Rejected alternative, kept here as the upgrade path if editorial control is
+ * ever wanted: a per-penka override read first, with this key as the fallback
+ * (`penka:{penkaId}:pollingProfile` → `ops:pollingProfile` → `normal`).
+```
+
+`packages/contracts/src/ops.ts:26-28`, `:37-39`, `:52`, `:55`, `:58`:
+
+```ts
+export function toPollingProfile(raw: string | null): PollingProfile {
+  return Value.Check(PollingProfileSchema, raw) ? raw : 'normal';
+}
+
+export function boardCacheKey(penkaId: string): string {
+  return `penka:${penkaId}:board`;
+}
+
+export const BOARD_CACHE_TTL_SECONDS = 60;
+const POLL_SECONDS: Record<PollingProfile, number> = { live: 2, normal: 10, slow: 30 };
+export const NEAR_LOCK_MS = 10 * 60_000;
+```
+
+`packages/contracts/src/ops.ts:80-86` — the cadence rule, computed server-side:
+
+```ts
+export function nextPollInSec({ profile, now, lockAt }: NextPollInput): number {
+  if (profile !== 'normal') {
+    return POLL_SECONDS[profile];
+  }
+  const msToLock = lockAt.getTime() - now.getTime();
+  return msToLock < NEAR_LOCK_MS ? POLL_SECONDS.live : POLL_SECONDS.normal;
+}
+```
+
+`POLL_SECONDS` is module-private; only `nextPollInSec` is exported.
 
 ---
 
@@ -494,56 +377,51 @@ export type ApiError = Static<typeof ApiErrorSchema>;
 
 ### 2.1 `db.collection(...)` call sites
 
-Grep for `.collection<` and `.collection(` across `apps/` and `packages/` (excluding
-`node_modules`). Production call sites — all typed:
+Eight collections, twenty-one typed accessors across four processes. No other file in the
+repository calls `db.collection` directly.
 
-| File:line | Call |
-| --- | --- |
-| `apps/api/src/modules/penkas/store.ts:53` | `db.collection<PenkaDoc>('penkas')` |
-| `apps/api/src/modules/penkas/store.ts:57` | `db.collection<EntryDoc>('entries')` |
-| `apps/api/src/modules/penkas/store.ts:61` | `db.collection<MatchdayDoc>('matchdays')` |
-| `apps/api/src/modules/penkas/store.ts:65` | `db.collection<MatchDoc>('matches')` |
-| `apps/api/src/modules/auth/store.ts:20` | `db.collection<UserDoc>('users')` |
-| `apps/api/src/modules/auth/store.ts:24` | `db.collection<RefreshTokenDoc>('refreshTokens')` |
+| Collection      | Accessors                                                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`         | `apps/api/src/modules/auth/store.ts:20`, `apps/workers/src/modules/resolution/store.ts:124`                                                                       |
+| `refreshTokens` | `apps/api/src/modules/auth/store.ts:24`                                                                                                                           |
+| `penkas`        | `apps/api/src/modules/penkas/store.ts:53`, `apps/backoffice-api/src/modules/admin/store.ts:78`, `apps/workers/src/modules/resolution/store.ts:104`                 |
+| `entries`       | `apps/api/src/modules/penkas/store.ts:57`, `apps/backoffice-api/src/modules/admin/store.ts:82`, `apps/workers/src/modules/resolution/store.ts:108`                 |
+| `matchdays`     | `apps/api/src/modules/penkas/store.ts:61`, `apps/backoffice-api/src/modules/admin/store.ts:86`, `apps/workers/src/modules/resolution/store.ts:112`                 |
+| `matches`       | `apps/api/src/modules/penkas/store.ts:65`, `apps/backoffice-api/src/modules/admin/store.ts:90`, `apps/workers/src/modules/resolution/store.ts:116`                 |
+| `picks`         | `apps/api/src/modules/game/store.ts:21`, `apps/backoffice-api/src/modules/admin/store.ts:94`, `apps/workers/src/modules/resolution/store.ts:120`                   |
+| `resolutions`   | `apps/api/src/modules/game/store.ts:46`, `apps/workers/src/modules/resolution/store.ts:128`                                                                        |
 
-Six collections: `penkas`, `entries`, `matchdays`, `matches`, `users`, `refreshTokens`.
+### 2.2 Document types are declared per process, on purpose
 
-Test call sites, all **untyped** except one — they bypass the accessors and name the
-collection as a string literal:
+Each app declares its own `PenkaDoc`/`EntryDoc`/`MatchdayDoc`/`MatchDoc`/`PickDoc` rather
+than importing a shared one. `apps/api/src/modules/game/store.ts:29-33` states the rule:
 
-- `apps/api/test/integration/auth.int.test.ts:432` `db.collection('users')`
-- `apps/api/test/integration/auth.int.test.ts:438` `.collection('refreshTokens')`
-- `apps/api/test/integration/penkas.int.test.ts:154, 267, 328` `collection('penkas')`
-- `apps/api/test/integration/penkas.int.test.ts:197, 206, 221, 242` `collection('matchdays')`
-- `apps/api/test/integration/penkas.int.test.ts:198, 208, 225, 236, 245` `collection('matches')`
-- `apps/api/test/integration/penkas.int.test.ts:374, 388, 442` `collection('entries')`
-- `apps/api/test/integration/penkas.int.test.ts:283` `.collection<{ _id: string; lockAt: Date }>('matchdays')` — an ad-hoc inline type parameter, not `MatchdayDoc`
+```
+ * The shape is declared twice on purpose, once per process, the same way the
+ * back office declares its own `PenkaDoc`: a collection crossing an app boundary
+ * is a contract about *bytes in Mongo*, and a shared TypeScript interface would
+ * only make the two apps look coupled without making them agree.
+```
 
-### 2.2 Document types and `_id`s
-
-`apps/api/src/modules/penkas/store.ts:4-50`, verbatim:
+`apps/api/src/modules/penkas/store.ts:4` names the other half of the rule:
 
 ```ts
 /** Mongo document shapes — internal to the API; they never cross a contract boundary. */
-export interface PenkaDoc {
-  name: string;
-  leagueId: string;
-  joinCode: string;
-  settings: { lives: number; islandEnabled: boolean };
-  createdBy: string;
-  createdAt: Date;
-}
+```
 
-export interface EntryDoc {
-  penkaId: string;
-  userId: string;
-  lives: number;
-  status: EntryStatus;
-  usedTeams: string[];
-  points: number;
-  createdAt: Date;
-}
+Declaration sites: `apps/api/src/modules/penkas/store.ts:5,14,29,42`,
+`apps/api/src/modules/auth/store.ts:5,12`, `apps/api/src/modules/game/store.ts:13,35`,
+`apps/backoffice-api/src/modules/admin/store.ts:19,28,50,59,70`,
+`apps/workers/src/modules/resolution/store.ts:24,33,44,53,69,77,93`.
 
+### 2.3 Constructed `_id`s
+
+Two collections have string `_id`s built by the contract's id functions; everything else
+uses Mongo's `ObjectId`.
+
+`apps/api/src/modules/penkas/store.ts:24-34`
+
+```ts
 /**
  * Matchdays and matches belong to a LEAGUE, not to a penka: every penka on a
  * league plays the same calendar. Their `_id`s are derived from the league and
@@ -556,97 +434,32 @@ export interface MatchdayDoc {
   status: MatchdayStatus;
   lockAt: Date;
 }
-
-/**
- * Teams are stored as catalog codes, never as generated ids. A match belongs to
- * one league, and codes are unique inside a league, so a code identifies a team
- * unambiguously — the MVP creates no separate team documents.
- */
-export interface MatchDoc {
-  _id: string;
-  matchdayId: string;
-  leagueId: string;
-  homeTeamCode: string;
-  awayTeamCode: string;
-  kickoffAt: Date;
-  outcome: MatchOutcome | null;
-}
 ```
 
-`apps/api/src/modules/auth/store.ts:4-17`:
+`apps/api/src/modules/penkas/store.ts:42-49` — `MatchDoc._id: string`, same reason.
 
-```ts
-/** Mongo document shapes — internal to the API; they never cross a contract boundary. */
-export interface UserDoc {
-  email: string;
-  displayName: string;
-  passwordHash: string;
-  createdAt: Date;
-}
+`apps/api/src/modules/game/store.ts:8-11` records the consequence for picks:
 
-export interface RefreshTokenDoc {
-  tokenHash: string;
-  userId: string;
-  expiresAt: Date;
-  createdAt: Date;
-}
 ```
-
-`_id` types:
-
-| Collection | Doc type | `_id` |
-| --- | --- | --- |
-| `penkas` | `PenkaDoc` | no `_id` field declared; driver default `ObjectId` — read back as `doc._id.toHexString()` at `store.ts:86` |
-| `entries` | `EntryDoc` | no `_id` field declared; driver default `ObjectId` — `store.ts:97` |
-| `matchdays` | `MatchdayDoc` | `_id: string` (`store.ts:30`) |
-| `matches` | `MatchDoc` | `_id: string` (`store.ts:43`) |
-| `users` | `UserDoc` | no `_id` field declared; driver default `ObjectId` — `auth/store.ts:40` |
-| `refreshTokens` | `RefreshTokenDoc` | no `_id` field declared; driver default `ObjectId` |
-
-### 2.3 Constructed `_id`s
-
-`apps/api/src/modules/penkas/calendar.ts:9-12` — the only named id builder:
-
-```ts
-/** Derived, not generated: the same league always names its matchdays the same way. */
-export function matchdayId(leagueId: string, number: number): string {
-  return `${leagueId}:md${number}`;
-}
+ * `matchdayId` is the derived league-scoped id (`copa-libertadores:md1`), so a
+ * pick needs no penkaId of its own — the entry already names the penka.
 ```
-
-Match `_id`s are built inline, not by a named function —
-`apps/api/src/modules/penkas/calendar.ts:28-44`:
-
-```ts
-  for (const template of entry.fixtureTemplate.matchdays) {
-    const _id = matchdayId(leagueId, template.number);
-    const lockAt = new Date(now.getTime() + template.lockAtOffsetMinutes * 60_000);
-    matchdays.push({ _id, leagueId, number: template.number, status: 'open', lockAt });
-
-    for (const { homeTeamCode, awayTeamCode } of template.matchups) {
-      matches.push({
-        _id: `${_id}:${homeTeamCode}-${awayTeamCode}`,
-        matchdayId: _id,
-        leagueId,
-        homeTeamCode,
-        awayTeamCode,
-        // The MVP locks picks at kickoff: one instant per matchday.
-        kickoffAt: lockAt,
-        outcome: null,
-      });
-    }
-  }
-```
-
-So a match id is `` `${leagueId}:md${number}:${homeTeamCode}-${awayTeamCode}` ``, e.g.
-`copa-libertadores:md1:RIV-BOC`. `kickoffAt` is assigned the same `Date` object as the
-matchday's `lockAt` (`calendar.ts:41`).
 
 ### 2.4 Index-creation helpers
 
-Two exist. Neither is called from `buildApp`; each is called by its route module (§3.4).
+Four helpers, each called by its own process at boot.
 
-**`ensurePenkaIndexes(db: Db): Promise<void>`** — `apps/api/src/modules/penkas/store.ts:68-82`, verbatim:
+`apps/api/src/modules/auth/store.ts:29-33` (`ensureAuthIndexes`)
+
+```ts
+    usersCollection(db).createIndex({ email: 1 }, { unique: true }),
+    refreshTokensCollection(db).createIndex({ tokenHash: 1 }, { unique: true }),
+    …
+    refreshTokensCollection(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+```
+
+`apps/api/src/modules/penkas/store.ts:67-81` (`ensurePenkaIndexes`), with the comments that
+explain which index is load-bearing:
 
 ```ts
 export async function ensurePenkaIndexes(db: Db): Promise<void> {
@@ -666,94 +479,78 @@ export async function ensurePenkaIndexes(db: Db): Promise<void> {
 }
 ```
 
-Six indexes: `penkas {joinCode:1} unique`; `entries {penkaId:1,userId:1} unique`;
-`entries {userId:1}`; `matchdays {leagueId:1,number:1} unique`; `matches {matchdayId:1}`;
-`matches {leagueId:1}`.
-
-**`ensureAuthIndexes(db: Db): Promise<void>`** — `apps/api/src/modules/auth/store.ts:27-35`, verbatim:
+`apps/api/src/modules/game/store.ts:50-55` (`ensureGameIndexes`)
 
 ```ts
-export async function ensureAuthIndexes(db: Db): Promise<void> {
-  await Promise.all([
-    usersCollection(db).createIndex({ email: 1 }, { unique: true }),
-    refreshTokensCollection(db).createIndex({ tokenHash: 1 }, { unique: true }),
-    // Mongo's TTL sweeper garbage-collects expired refresh tokens; expiry is
-    // still enforced at read time because the sweeper only runs every ~60s.
-    refreshTokensCollection(db).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-  ]);
-}
+  // One pick per entry per matchday. Submitting is an upsert that leans on this
+  // index to settle a race: the loser gets a duplicate key and updates instead.
+  // Its prefix also serves the board's read, which fetches a whole matchday's
+  // picks by entry id.
+  await picksCollection(db).createIndex({ entryId: 1, matchdayId: 1 }, { unique: true });
 ```
 
-Three indexes: `users {email:1} unique`; `refreshTokens {tokenHash:1} unique`;
-`refreshTokens {expiresAt:1}` TTL with `expireAfterSeconds: 0`.
+`apps/backoffice-api/src/modules/admin/store.ts:110-114` (`ensureAdminIndexes`) — read-path
+indexes only:
+
+```ts
+    penkasCollection(db).createIndex({ leagueId: 1 }),
+    picksCollection(db).createIndex({ matchdayId: 1 }),
+```
+
+`apps/workers/src/modules/resolution/store.ts:143-145` (`ensureWorkerIndexes`) — the
+once-only-resolution index, owned by the process that writes the document:
+
+```ts
+  await resolutionsCollection(db).createIndex({ penkaId: 1, matchdayId: 1 }, { unique: true });
+```
+
+**Consequence for any test or tool that resets data**: dropping the database drops these
+indexes, and they are the mechanism under test (§5.6).
 
 ### 2.5 Document → contract mappers
 
-`apps/api/src/modules/penkas/store.ts:84-105` (`toPenka`, `toEntry`) and
-`apps/api/src/modules/auth/store.ts:37-45` (`toPublicUser`). All three convert `_id` with
-`.toHexString()` and `Date` fields with `.toISOString()`. Example, `store.ts:95-105`:
+Mappers live beside the documents and are the only place a `Date` becomes an ISO string or
+an `ObjectId` becomes a string id.
 
-```ts
-export function toEntry(doc: WithId<EntryDoc>): Entry {
-  return {
-    id: doc._id.toHexString(),
-    penkaId: doc.penkaId,
-    userId: doc.userId,
-    lives: doc.lives,
-    status: doc.status,
-    usedTeams: doc.usedTeams,
-    points: doc.points,
-  };
-}
-```
+`apps/api/src/modules/penkas/store.ts:83` (`toPenka`), and further down the same file
+`toEntry`; `apps/api/src/modules/game/store.ts` (`toMatchday`, `toMatch`, `toPlayerPick`,
+`toResolution`); `apps/backoffice-api/src/modules/admin/store.ts:117,128,141,152`
+(`toPenka`, `toEntry`, `toMatchday`, `toMatch`);
+`apps/workers/src/modules/resolution/store.ts:147,160,171,183,193` (`toEntry`, `toMatchday`,
+`toMatch`, `toPlayerPick`, `toResolution`).
+
+`toMatchday` and `toMatch` take the document by value rather than as `WithId<…>` because the
+`_id` is already the string id (`apps/api/src/modules/game/store.ts:58-60`).
 
 ### 2.6 Duplicate-key detection
 
-`apps/api/src/modules/penkas/mongo-errors.ts:3-23`, verbatim:
+One helper, `apps/api/src/lib/mongo-errors.ts:3-17`:
 
 ```ts
 const DUPLICATE_KEY = 11000;
-
+…
 /**
- * Did this write fail *only* because the documents were already there? Both
- * writers in this module lean on unique indexes as the arbiter of a race, so
- * they need to tell "someone beat me to it" from a genuine failure.
- *
- * A bulk write reports one error per document, and qualifies only when every
- * one of them is a duplicate key — an empty list does NOT qualify, since a
- * bulk error with no per-document failures (a write-concern error, say) means
- * the write did not land.
+ * … one of them is a duplicate key — an empty list does NOT qualify, since a
+ * …
  */
 export function isDuplicateKeyError(error: unknown): boolean {
-  if (error instanceof MongoBulkWriteError) {
-    const writeErrors = Array.isArray(error.writeErrors) ? error.writeErrors : [error.writeErrors];
-    return (
-      writeErrors.length > 0 && writeErrors.every((writeError) => writeError.code === DUPLICATE_KEY)
-    );
-  }
-  return error instanceof MongoServerError && error.code === DUPLICATE_KEY;
-}
 ```
 
-`apps/api/src/modules/auth/routes.ts:88-93` does **not** use this helper; it inlines the
-check:
+It is bulk-aware: `insertMany({ ordered: false })` reports failures in `writeErrors`, so the
+helper inspects the list as well as the top-level code.
 
-```ts
-      } catch (error) {
-        // The unique index is the race-safe duplicate check.
-        if (error instanceof MongoServerError && error.code === 11000) {
-          throw new ApiError(409, 'email_taken', 'Email is already registered');
-        }
-        throw error;
-      }
-```
+Call sites: `apps/api/src/modules/auth/routes.ts:91` (register race on the unique email
+index), `apps/api/src/modules/penkas/routes.ts:74` (join-code collision) and `:108`
+(concurrent join), `apps/api/src/modules/penkas/materialize.ts:12` (concurrent calendar),
+`apps/api/src/modules/game/routes.ts:196` (concurrent pick upsert).
 
-The two places disagree on mechanism (shared helper vs. inline literal `11000`); both are
-recorded here as-is.
+`@penka/backoffice-api` and `@penka/workers` have no copy of this helper: neither inserts
+into a uniquely-indexed collection on a contended path except through
+`resolutions.insertOne`, which is handled by `finalizeMatchday`'s own branch.
 
 ### 2.7 Join codes
 
-`apps/api/src/modules/penkas/join-code.ts:3-26`, verbatim:
+`apps/api/src/modules/penkas/join-code.ts` is 26 lines; the header is the trade-off record:
 
 ```ts
 /**
@@ -770,9 +567,11 @@ export const JOIN_CODE_SPACE = 10_000;
 
 /** Give up after this many collisions and report the space as exhausted. */
 export const MAX_JOIN_CODE_ATTEMPTS = 5;
+```
 
-export type JoinCodeGenerator = () => string;
+`apps/api/src/modules/penkas/join-code.ts:20-26` — uniformity is explicit:
 
+```ts
 /**
  * Cryptographically random and uniform: `randomInt` rejection-samples, so no
  * code is likelier than another (a `% 10000` over random bytes would bias the
@@ -782,38 +581,73 @@ export const generateJoinCode: JoinCodeGenerator = () =>
   randomInt(JOIN_CODE_SPACE).toString().padStart(4, '0');
 ```
 
-### 2.8 Rollback helper
+The retry loop is `insertWithJoinCode` at `apps/api/src/modules/penkas/routes.ts:63-85`; the
+index, not a pre-check, is the arbiter (`:58-62`), and exhaustion is a 503 with
+`join_code_space_exhausted` (`:86-91`).
 
-`apps/api/src/modules/penkas/rollback.ts:15-28`:
+### 2.8 Idempotent join
+
+`apps/api/src/modules/penkas/routes.ts:88-116` (`ensureEntry`):
 
 ```ts
-export async function discardPenka(
-  db: Db,
-  log: FastifyBaseLogger,
-  penkaId: ObjectId,
-): Promise<void> {
-  try {
-    await penkasCollection(db).deleteOne({ _id: penkaId });
-  } catch (error) {
-    log.error(
-      { err: error, penkaId: penkaId.toHexString() },
-      'could not roll back a half-created penka; it is orphaned and still holds a join code',
-    );
-  }
-}
+/**
+ * Add the user to the penka, or hand back the entry they already have —
+ * joining twice is the same as joining once. `$setOnInsert` plus the unique
+ * (penkaId, userId) index means a double-click cannot cost a player their
+ * progress by resetting lives.
+ */
 ```
 
-### 2.9 Calendar materialization
+The upsert uses `$setOnInsert` with `returnDocument: 'after'`, and falls back to a plain
+`findOne` when the unique index rejects the loser of a race. The route answers **200** on a
+repeat join, not 409 — see §3.6.
 
-`apps/api/src/modules/penkas/materialize.ts:37-56`:
+### 2.9 Rollback helper
+
+`apps/api/src/modules/penkas/rollback.ts:5-15`
 
 ```ts
-export async function ensureLeagueMaterialized(
-  db: Db,
-  entry: CatalogLeague,
-  now: Date,
-): Promise<void> {
-  const leagueId = entry.league.id;
+/**
+ * Undo a penka whose creation could not be finished. A penka with no players
+ * is invisible to every endpoint yet still occupies one of the 10,000 join
+ * codes (see join-code.ts), so leaving it behind quietly shrinks the space for
+ * everyone.
+ *
+ * The caller is already throwing the failure that triggered this rollback, so a
+ * failure HERE cannot be raised — it is logged instead, with the id an operator
+ * needs to reclaim the code by hand.
+ */
+export async function discardPenka(
+```
+
+It is invoked from the create handler, which runs the penka insert and the calendar
+materialization concurrently with `Promise.allSettled` rather than `Promise.all`
+(`apps/api/src/modules/penkas/routes.ts:196-201`): `all` would discard the handle needed to
+compensate.
+
+### 2.10 Calendar materialization
+
+`apps/api/src/modules/penkas/materialize.ts:20-35` — the whole idempotency argument, plus
+the completeness check:
+
+```
+ * Three things keep this idempotent, in order of how much they are relied on:
+ *   1. the `_id`s are derived from the league and matchday, so re-inserting is
+ *      a duplicate key rather than a second calendar;
+ *   2. the unique index on (leagueId, number) enforces that at the database;
+ *   3. the reads below are only a fast path that skips the write entirely.
+ * Two creators racing on a fresh league therefore end with one calendar, and
+ * whoever won sets the lock times for everyone.
+ *
+ * The fast path checks BOTH collections because they are written in two steps:
+ * a run that inserted the matchdays and then died would otherwise leave the
+ * league stranded forever, since every later call would find those matchdays
+ * and return without ever inserting the matches.
+```
+
+`apps/api/src/modules/penkas/materialize.ts:44-52`
+
+```ts
   const [existingMatchday, existingMatch] = await Promise.all([
     matchdaysCollection(db).findOne({ leagueId }, { projection: { _id: 1 } }),
     matchesCollection(db).findOne({ leagueId }, { projection: { _id: 1 } }),
@@ -821,22 +655,22 @@ export async function ensureLeagueMaterialized(
   if (existingMatchday !== null && existingMatch !== null) {
     return;
   }
-
-  const { matchdays, matches } = buildLeagueCalendar(entry, now);
-  // Unordered: a partial calendar from an interrupted run finishes here instead
-  // of stopping at the first document that already exists.
-  await insertOnce(() => matchdaysCollection(db).insertMany(matchdays, { ordered: false }));
-  await insertOnce(() => matchesCollection(db).insertMany(matches, { ordered: false }));
-}
 ```
+
+Both inserts are `{ ordered: false }` so a partial calendar finishes instead of stopping at
+the first document that already exists (`:53-56`).
+
+Lock times are **relative to the moment of first materialization**: `buildLeagueCalendar`
+(`apps/api/src/modules/penkas/calendar.ts`) resolves each template's `lockAtOffsetMinutes`
+against the `now` it is handed, and `kickoffAt === lockAt`.
 
 ---
 
-## 3. App wiring (`apps/api`)
+## 3. App wiring — `apps/api`
 
 ### 3.1 `buildApp` signature and options
 
-`apps/api/src/app.ts:14-36`, verbatim:
+`apps/api/src/app.ts:15-37`
 
 ```ts
 export interface BuildAppOptions {
@@ -864,175 +698,61 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 ```
 
-Three options exactly: `config` (required), `logger` (default `false`),
-`generateJoinCode` (optional). Registration order, `apps/api/src/app.ts:38-60`:
+Registration order, `apps/api/src/app.ts:39-63`: error handler, not-found handler, `mongo`,
+`redis`, `rate-limit`, `auth`, `/health`, then `authRoutes`, `catalogRoutes`, `penkaRoutes`,
+`gameRoutes` — all under `/api/v1`. The last line is load-bearing (`:62`):
 
 ```ts
-  app.setErrorHandler(errorHandler);
-  app.setNotFoundHandler(notFoundHandler);
-  app.register(mongoPlugin, { url: config.mongoUrl, dbName: config.mongoDbName });
-  app.register(redisPlugin, { url: config.redisUrl });
-  app.register(rateLimitPlugin, { max: config.rateLimitMax });
-  app.register(authPlugin, {
-    secret: config.jwtSecret,
-    accessTtlSeconds: config.accessTokenTtlSeconds,
-  });
-
-  app.get(
-    '/health',
-    { schema: { response: { 200: HealthResponseSchema } } },
-    async (): Promise<HealthResponse> => ({ status: 'ok' }),
-  );
-
-  app.register(authRoutes, { prefix: '/api/v1', config });
-  app.register(catalogRoutes, { prefix: '/api/v1' });
-  app.register(penkaRoutes, {
-    prefix: '/api/v1',
-    config,
-    generateJoinCode: options.generateJoinCode,
-  });
-```
-
-`AppConfig` — `apps/api/src/config.ts:15-26`:
-
-```ts
-export interface AppConfig {
-  port: number;
-  mongoUrl: string;
-  mongoDbName: string;
-  redisUrl: string;
-  jwtSecret: string;
-  accessTokenTtlSeconds: number;
-  refreshTokenTtlSeconds: number;
-  rateLimitMax: number;
-  /** Fastify's trustProxy: false, true, a hop count, or a proxy IP/CIDR list. */
-  trustProxy: boolean | number | string;
-}
+  // After penkaRoutes: the game reads the calendar that module materializes.
 ```
 
 ### 3.2 Decorators registered on the instance
 
-Grep for `.decorate(` / `decorateRequest(` across `apps/` and `packages/`. Application code:
-
-| File:line | Decorator | Type |
-| --- | --- | --- |
-| `apps/api/src/plugins/mongo.ts:21` | `mongo` | `MongoClient` (`plugins/mongo.ts:6`) |
-| `apps/api/src/plugins/mongo.ts:22` | `db` | `Db` (`plugins/mongo.ts:7`) |
-| `apps/api/src/plugins/redis.ts:21` | `redis` | `Redis` (`plugins/redis.ts:6`) |
-| `apps/api/src/plugins/auth.ts:35` | `tokens` | `TokenService` (`plugins/auth.ts:8`) |
-| `apps/api/src/plugins/auth.ts:36` | `authenticate` | `(request: FastifyRequest) => Promise<void>` (`plugins/auth.ts:9`) |
-
-`apps/api/src/plugins/auth.ts:11-13` also augments the request type:
-
-```ts
-  interface FastifyRequest {
-    userId?: string;
-  }
-```
-
-Two more decorators are **not** registered by application code — they come from
-`@fastify/rate-limit` (installed `10.3.0`, declared `^10.2.2` at
-`apps/api/package.json:14`), at
-`node_modules/.pnpm/@fastify+rate-limit@10.3.0/node_modules/@fastify/rate-limit/index.js:128-140`:
-
-```js
-  if (!fastify.hasDecorator('createRateLimit')) {
-    fastify.decorate('createRateLimit', (options) => {
-      const args = createLimiterArgs(pluginComponent, globalParams, options)
-      return (req) => applyRateLimit.apply(this, args.concat(req))
-    })
-  }
-
-  if (!fastify.hasDecorator('rateLimit')) {
-    fastify.decorate('rateLimit', (options) => {
-      const args = createLimiterArgs(pluginComponent, globalParams, options)
-      return rateLimitRequestHandler(...args)
-    })
-  }
-```
-
-plus `decorateRequest` at index.js:126.
-
-Test-only fakes (unit tests, never in the boot path):
-`apps/api/src/modules/penkas/routes.test.ts:28-31` decorate `db`, `authenticate`,
-`createRateLimit`; `apps/api/src/modules/auth/routes.test.ts:28-38` decorate `db`,
-`tokens`, `authenticate`, `rateLimit`.
+| Decorator        | Declared / set                                                   |
+| ---------------- | ---------------------------------------------------------------- |
+| `mongo`          | `apps/api/src/plugins/mongo.ts:4-5`, `:21`                        |
+| `db`             | `apps/api/src/plugins/mongo.ts:22`                                |
+| `redis`          | `apps/api/src/plugins/redis.ts:4-5`, `:21`                        |
+| `tokens`         | `apps/api/src/plugins/auth.ts:6-7`, `:35`                         |
+| `authenticate`   | `apps/api/src/plugins/auth.ts:36`                                 |
+| `rateLimit`, `createRateLimit` | added by `@fastify/rate-limit` itself, registered at `apps/api/src/plugins/rate-limit.ts:20` |
 
 ### 3.3 Plugin metadata
 
-| Plugin | File:line | `fp` name / dependencies |
-| --- | --- | --- |
-| mongo | `apps/api/src/plugins/mongo.ts:27` | `{ name: 'mongo' }` |
-| redis | `apps/api/src/plugins/redis.ts:30` | `{ name: 'redis' }` |
-| rate-limit | `apps/api/src/plugins/rate-limit.ts:29` | `{ name: 'rate-limit', dependencies: ['redis'] }` |
-| auth | `apps/api/src/plugins/auth.ts:48` | `{ name: 'auth' }` |
+| Plugin       | `name`         | `dependencies` | File                                     |
+| ------------ | -------------- | -------------- | ---------------------------------------- |
+| mongo        | `mongo`        | —              | `apps/api/src/plugins/mongo.ts:27`       |
+| redis        | `redis`        | —              | `apps/api/src/plugins/redis.ts:30`       |
+| rate-limit   | `rate-limit`   | `['redis']`    | `apps/api/src/plugins/rate-limit.ts:29`  |
+| auth         | `auth`         | —              | `apps/api/src/plugins/auth.ts:48`        |
 
 ### 3.4 Per-route-module required-decorator assertions
 
-**`penkaRoutes`** — `apps/api/src/modules/penkas/routes.ts:35-36`:
+Every route module asserts its own preconditions at registration time rather than failing on
+the first request.
+
+| Module                                        | `REQUIRED_DECORATORS`                                     |
+| --------------------------------------------- | --------------------------------------------------------- |
+| `apps/api/src/modules/auth/routes.ts:54`      | `['db', 'tokens', 'authenticate', 'rateLimit']`            |
+| `apps/api/src/modules/penkas/routes.ts:36`    | `['db', 'authenticate', 'createRateLimit']`                |
+| `apps/api/src/modules/game/routes.ts:52`      | `['db', 'redis', 'authenticate']`                          |
+| `apps/backoffice-api/src/modules/admin/routes.ts:43` | `['db', 'redis', 'publisher', 'requireAdmin']`      |
+
+The failure message names the plugins to register, e.g.
+`apps/api/src/modules/penkas/routes.ts:125-127`:
 
 ```ts
-/** See the note in authRoutes: a plain plugin must assert its decorators itself. */
-const REQUIRED_DECORATORS = ['db', 'authenticate', 'createRateLimit'] as const;
-```
-
-enforced at `apps/api/src/modules/penkas/routes.ts:122-129`:
-
-```ts
-  for (const decorator of REQUIRED_DECORATORS) {
-    if (!instance.hasDecorator(decorator)) {
-      throw new Error(
         `penkaRoutes requires the "${decorator}" decorator: register the mongo, redis, ` +
           'rate-limit, and auth plugins before it',
-      );
-    }
-  }
 ```
 
-It then calls `await ensurePenkaIndexes(app.db);` (`routes.ts:131`).
+`catalogRoutes` asserts nothing — it reads a hardcoded catalog and touches no decorator.
 
-**`authRoutes`** — `apps/api/src/modules/auth/routes.ts:46-53`:
+### 3.5 Rate limiting: the plugin and the two hand-counted budgets
 
-```ts
-/**
- * Decorators this module reads. It is a plain (non fastify-plugin) plugin, so
- * Fastify cannot check plugin dependencies for it: assert them explicitly so a
- * registration-order mistake fails at boot with a clear message instead of
- * crashing cryptically — or, for `rateLimit`, leaving login silently
- * unthrottled because @fastify/rate-limit only sees routes registered after it.
- */
-const REQUIRED_DECORATORS = ['db', 'tokens', 'authenticate', 'rateLimit'] as const;
-```
-
-enforced at `apps/api/src/modules/auth/routes.ts:57-64`, followed by
-`await ensureAuthIndexes(app.db);` (`routes.ts:66`).
-
-**`catalogRoutes`** — no assertion. `apps/api/src/modules/catalog/routes.ts:12-17` in full:
+`apps/api/src/plugins/rate-limit.ts:10-31` — registered once, globally off:
 
 ```ts
-/**
- * The catalog is public, hardcoded and read-only: no auth, no database, no
- * rate limiting — every response is served from memory.
- */
-export const catalogRoutes: FastifyPluginAsync = async (instance) => {
-  const app = instance.withTypeProvider<TypeBoxTypeProvider>();
-```
-
-Its options type is `FastifyPluginAsync` with no options interface, unlike
-`AuthRoutesOptions` (`auth/routes.ts:24-26`) and `PenkaRoutesOptions`
-(`penkas/routes.ts:29-33`).
-
-### 3.5 Rate-limit helpers
-
-Three distinct mechanisms are in use.
-
-**(a) Plugin registration** — `apps/api/src/plugins/rate-limit.ts:6-30`, verbatim:
-
-```ts
-export interface RateLimitPluginOptions {
-  max: number;
-}
-
 /**
  * Registered with global:false — only routes that opt in via
  * `config.rateLimit` (register and login) are limited, at `max` requests per
@@ -1056,20 +776,8 @@ export const rateLimitPlugin = fp<RateLimitPluginOptions>(
 );
 ```
 
-**(b) Route-level `config.rateLimit`** — used by `authRoutes` only.
-`apps/api/src/modules/auth/routes.ts:68`:
-
-```ts
-  const rateLimited = { rateLimit: { max: config.rateLimitMax, timeWindow: '1 minute' } };
-```
-
-applied at `auth/routes.ts:73` (`/auth/register`) and `auth/routes.ts:114` (`/auth/login`)
-as `config: rateLimited`. Note: `authRoutes` asserts the `rateLimit` **decorator**
-(§3.4) but never calls `app.rateLimit(...)`; a repo-wide grep for `.rateLimit(` returns
-only comments in `penkas/routes.ts:137` and the `createRateLimit` calls below.
-
-**(c) `app.createRateLimit(...)`** — used by `penkaRoutes` only.
-`apps/api/src/modules/penkas/routes.ts:133-152`, verbatim:
+Joining is limited **twice**, and deliberately not with a second `rateLimit` hook —
+`apps/api/src/modules/penkas/routes.ts:132-152`:
 
 ```ts
   // Joining is the one guessable endpoint — 10,000 codes is small enough to
@@ -1094,73 +802,15 @@ only comments in `penkas/routes.ts:137` and the `createRateLimit` calls below.
   });
 ```
 
-with the enforcement wrapper at `penkas/routes.ts:154-176`:
-
-```ts
-  async function enforce(
-    check: RateLimitCheck,
-    request: FastifyRequest,
-    reply: FastifyReply,
-  ): Promise<void> {
-    const result = await check(request);
-    if (result.isAllowed || !result.isExceeded) {
-      return;
-    }
-    void reply.header('retry-after', result.ttlInSeconds);
-    throw new ApiError(
-      429,
-      'rate_limited',
-      `Rate limit exceeded, retry in ${result.ttlInSeconds} seconds`,
-    );
-  }
-```
-
-and the preHandler chain at `penkas/routes.ts:249`:
-
-```ts
-      preHandler: [limitByIp, app.authenticate, limitByUser],
-```
-
-The difference between (b)/`rateLimit` and (c)/`createRateLimit` is visible in the library
-source. `rateLimit` produces a hook that short-circuits on a per-request flag —
-`@fastify/rate-limit/index.js:277-285`:
-
-```js
-function rateLimitRequestHandler (pluginComponent, params) {
-  const { rateLimitRan } = pluginComponent
-
-  return async (req, res) => {
-    if (req[rateLimitRan]) {
-      return
-    }
-
-    req[rateLimitRan] = true
-```
-
-`createRateLimit` returns a bare per-request function with no such flag —
-`@fastify/rate-limit/index.js:129-132`:
-
-```js
-    fastify.decorate('createRateLimit', (options) => {
-      const args = createLimiterArgs(pluginComponent, globalParams, options)
-      return (req) => applyRateLimit.apply(this, args.concat(req))
-    })
-```
-
-`errorResponseBuilder` (a) shapes the 429 for (b); path (c) throws its own `ApiError`
-(`penkas/routes.ts:164-168`), so the two 429 messages differ in wording —
-`Rate limit exceeded, retry in ${context.after}` vs.
-`Rate limit exceeded, retry in ${result.ttlInSeconds} seconds`.
+The `enforce` helper (`:154-168`) sets `retry-after` and throws the canonical
+`ApiError(429, 'rate_limited', …)`.
 
 ### 3.6 Route table (actual `printRoutes()` dump)
 
-Produced by booting `buildApp({ config: makeTestConfig(infra) })` against Testcontainers
-Mongo + Redis, calling `await app.ready()`, then printing. No source file was modified; the
-script lived in the scratchpad.
-
-`app.printRoutes({ commonPrefix: false })`:
+Captured by booting `buildApp` and printing the tree.
 
 ```
+@penka/api
 ├── /health (GET, HEAD)
 ├── /api/v1/auth/register (POST)
 ├── /api/v1/auth/refresh (POST)
@@ -1170,78 +820,206 @@ script lived in the scratchpad.
 ├── /api/v1/catalog/leagues (GET, HEAD)
 │   └── /:leagueId (GET, HEAD)
 └── /api/v1/penkas (POST)
-    └── /join (POST)
+    ├── /join (POST)
+    ├── /:penkaId/board (GET, HEAD)
+    ├── /:penkaId/me (GET, HEAD)
+    ├── /:penkaId/matchday/current (GET, HEAD)
+    └── /:penkaId/picks (POST)
 ```
 
-`app.printRoutes()` (default radix view):
+Notable shapes: joining is `POST /api/v1/penkas/join` with the code in the body (not a path
+segment), and submitting a pick is `POST /api/v1/penkas/:penkaId/picks` with
+`{ teamCode }` — a catalog code, never a match or team id.
+
+### 3.7 `apps/backoffice-api`
+
+`apps/backoffice-api/src/app.ts:12-24` — the options carry two test seams:
+
+```ts
+export interface BuildAppOptions {
+  config: AppConfig;
+  /**
+   * `true` in production. Tests that assert on a log line — the resolve
+   * rollback is only visible there — pass pino options with their own stream.
+   */
+  logger?: FastifyServerOptions['logger'];
+  /**
+   * Seam for tests that need to watch — or break — what gets published;
+   * production connects to RabbitMQ through the plugin below.
+   */
+  publisher?: ResolutionPublisher;
+}
+```
+
+`apps/backoffice-api/src/app.ts:33-40` — no `trustProxy`, with the reason:
+
+```ts
+    ajv: { customOptions: { removeAdditional: false } },
+    // No trustProxy: this API is operator-only and keys nothing on the client
+    // IP, so there is no header worth trusting (see src/config.ts).
+```
+
+`apps/backoffice-api/src/app.ts:46-52` — the publisher seam bypasses the plugin entirely:
+
+```ts
+  if (options.publisher === undefined) {
+    app.register(rabbitPlugin, { url: config.rabbitUrl });
+  } else {
+    // Decorated here rather than through a plugin so an injected publisher is in
+    // place before boot: nothing dials a broker that was never needed.
+    app.decorate('publisher', options.publisher);
+  }
+```
+
+`/health` sits **outside** the admin guard (`apps/backoffice-api/src/app.ts:55-61`):
+"a load balancer has no admin key".
+
+Decorators: `mongo`/`db` (`plugins/mongo.ts:21-22`), `redis` (`plugins/redis.ts:21`),
+`publisher` (`plugins/rabbit.ts:31` or `app.ts:51`), `requireAdmin`
+(`plugins/admin-auth.ts:47`). Plugin names: `mongo`, `redis`, `rabbit`, `admin-auth` — none
+declares `dependencies`.
+
+**Admin authentication**, `apps/backoffice-api/src/plugins/admin-auth.ts:17-53`:
+
+```ts
+export const ADMIN_KEY_HEADER = 'x-admin-key';
+
+/**
+ * Constant-time comparison. A plain `===` returns as soon as two bytes differ,
+ * so an attacker who can time the answer learns the key one character at a
+ * time; the length is hashed into the comparison by rejecting a mismatch up
+ * front, which leaks only how long the key is.
+ */
+function keyMatches(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+```
+
+and the trade-off, recorded in the plugin itself (`:31-43`):
 
 ```
-└── /
-    ├── health (GET, HEAD)
-    └── api/v1/
-        ├── auth/
-        │   ├── re
-        │   │   ├── gister (POST)
-        │   │   └── fresh (POST)
-        │   └── login (POST)
-        ├── me (GET, HEAD)
-        │   └── /penkas (GET, HEAD)
-        ├── catalog/leagues (GET, HEAD)
-        │   └── /
-        │       └── :leagueId (GET, HEAD)
-        └── penkas (POST)
-            └── /join (POST)
+ * This is a deliberate MVP decision, not a design: a shared secret has no
+ * identity behind it, so an audit log could not say WHO closed a matchday, and
+ * rotating it logs out every operator at once. The production path is
+ * role-based users (the `users` collection already exists, and this API would
+ * check a role claim on the same JWTs @penka/api issues) — at which point this
+ * plugin is replaced, not extended.
 ```
 
-Nine route entries in total:
+Missing, malformed and wrong keys all get one answer: `401 unauthorized` (`:50-52`).
 
-| Method | Path |
-| --- | --- |
-| GET, HEAD | `/health` |
-| POST | `/api/v1/auth/register` |
-| POST | `/api/v1/auth/refresh` |
-| POST | `/api/v1/auth/login` |
-| GET, HEAD | `/api/v1/me` |
-| GET, HEAD | `/api/v1/me/penkas` |
-| GET, HEAD | `/api/v1/catalog/leagues` |
-| GET, HEAD | `/api/v1/catalog/leagues/:leagueId` |
-| POST | `/api/v1/penkas` |
-| POST | `/api/v1/penkas/join` |
-
-No route exists for board, my-entry, current-matchday, or submit-pick, although the schemas
-for all four are exported from `@penka/contracts` (§1.5). No admin route exists in this app.
-
-`app.printPlugins()` from the same boot:
+**Route table**, actual `printRoutes()` dump:
 
 ```
-root 96 ms
-├── bound _after 1 ms
-├── bound _after 0 ms
-├── mongo 13 ms
-├── redis 7 ms
-├─┬ rate-limit 2 ms
-│ ├── @fastify/rate-limit 1 ms
-│ └── bound _after 0 ms
-├── auth 0 ms
-├── bound _after 0 ms
-├── bound _after 0 ms
-├─┬ authRoutes 28 ms
-│ ├── bound _after 0 ms
-│ ├── bound _after 0 ms
-│ ├── bound _after 0 ms
-│ ├── bound _after 0 ms
-│ └── bound _after 0 ms
-├─┬ catalogRoutes 1 ms
-│ ├── bound _after 0 ms
-│ ├── bound _after 0 ms
-│ ├── bound _after 0 ms
-│ └── bound _after 0 ms
-└─┬ penkaRoutes 40 ms
-  ├── bound _after 0 ms
-  ├── bound _after 0 ms
-  ├── bound _after 0 ms
-  └── bound _after 0 ms
+@penka/backoffice-api
+├── /health (GET, HEAD)
+├── /admin/v1/penkas (GET, HEAD)
+├── /admin/v1/polling-profile (PUT)
+├── /admin/v1/leagues/:leagueId/matchdays/:number (GET, HEAD)
+│   ├── /close (POST)
+│   └── /resolve (POST)
+└── /admin/v1/matches/:matchId/result (POST)
 ```
+
+Matchdays and the resolve trigger are addressed by **league + number**, not by penka: one
+admin action fans out to every penka on the league. A `matchId` in the path contains colons
+(§1.7), so clients must `encodeURIComponent` it — find-my-way decodes route params before
+the handler runs, and the server never decodes a second time.
+
+**Once-only resolve.** `apps/backoffice-api/src/modules/admin/resolve.ts:50-66` is the
+reason the request timestamp is claimed before the penkas are read:
+
+```
+ * The timestamp is not decoration: `@penka/workers` counts the penkas of
+ * `{ leagueId, createdAt <= requestedAt }` to decide the matchday is finished,
+ * so the set of penkas that got a command and the set the workers wait for must
+ * be derived from the SAME instant. A second press that minted a fresh `new
+ * Date()` would build a wider set than the first — and a penka that joined in
+ * between would be resolved by nobody, because the first fan-out has already
+ * finished the matchday without it.
+```
+
+`claimResolveRequest` (`:68-92`) does it in one conditional `findOneAndUpdate`;
+`requestResolution` (`:107-119`) compensates a failed publish by clearing **only its own**
+claim, and `clearResolveRequest` (`:34-48`) logs rather than throws, because the caller is
+already throwing the real cause.
+
+### 3.8 `apps/workers`
+
+There is no HTTP surface. `apps/workers/src/worker.ts:26-31`:
+
+```
+ * There is no HTTP here and there never will be — a worker that answered a
+ * health check would be an API. Liveness is the process being up and the queue
+ * draining, which is what an operator watches in the RabbitMQ console.
+```
+
+Boot order (`apps/workers/src/worker.ts:44-73`): Mongo connect → `ensureWorkerIndexes` →
+Redis `ping` → AMQP connect → `declareTopology` → confirm channel → lifecycle watcher →
+`startResolutionConsumer`. Two channels on one connection, because confirm mode is
+per-channel and only the retry path needs it (`:32-35`).
+
+`apps/workers/src/messaging/topology.ts:27` (`declareTopology`), mirrored byte for byte in
+`apps/backoffice-api/src/messaging/topology.ts`:
+
+```ts
+await channel.assertExchange(SURVIVOR_COMMANDS_EXCHANGE, 'topic', { durable: true });
+await channel.assertExchange(SURVIVOR_DLX, 'topic', { durable: true });
+await channel.assertQueue(RESOLUTION_DLQ, { durable: true });
+await channel.bindQueue(RESOLUTION_DLQ, SURVIVOR_DLX, RESOLUTION_DLQ);
+await channel.assertQueue(RESOLUTION_QUEUE, {
+  durable: true, deadLetterExchange: SURVIVOR_DLX, deadLetterRoutingKey: RESOLUTION_DLQ,
+});
+await channel.bindQueue(RESOLUTION_QUEUE, SURVIVOR_COMMANDS_EXCHANGE, RESOLUTION_BINDING_KEY);
+```
+
+`apps/workers/src/worker.ts:58-61` explains the duplication:
+
+```ts
+  // Declared here too, with the same arguments the back office uses. Whichever
+  // process boots first creates the topology; a disagreement about the queue's
+  // arguments is a PRECONDITION_FAILED at boot rather than a message that
+  // quietly never arrives.
+```
+
+**Retry accounting** is a header the consumer writes, not the broker's `x-death` —
+`apps/workers/src/messaging/consumer.ts:11-20`:
+
+```
+ * It exists because `nack(requeue: true)` cannot carry a counter: the broker's
+ * own `x-death` array only accrues when a message is actually dead-lettered, so
+ * a requeue loop is invisible and unbounded. A countable retry has to go back
+ * through the exchange with the count written on it.
+ */
+export const ATTEMPT_HEADER = 'x-attempt';
+```
+
+Retries republish through the exchange, never straight to the queue, and there is
+deliberately no backoff (`apps/workers/src/messaging/consumer.ts:63-72`).
+
+**`prefetch = 1` is an ordering guarantee, not a throughput setting** —
+`apps/workers/src/messaging/consumer.ts:108-114`:
+
+```
+ * `prefetch(1)` keeps one delivery in flight at a time. That is what gives a
+ * penka's matchdays a defined order with a single consumer, and it is a
+ * deliberate MVP limit: the scale path is a consistent-hash exchange keyed on
+ * the penka (or one queue per shard), not a larger prefetch, which would let two
+ * matchdays of the same penka resolve concurrently.
+```
+
+Three delivery outcomes are enumerated at `:93-107`: done → ack; poison (not JSON, or not
+the command schema) → `nack(requeue:false)` straight to the DLQ; not-yet → counted retry up
+to `maxAttempts`, then a real `nack(requeue:false)` so the **broker** writes the `x-death`
+trail.
+
+Handler pipeline: `loadResolutionState` (`modules/resolution/load.ts:49`) → engine →
+`applyOutcome` (`apply.ts:92`) → `finalizeMatchday` (`finalize.ts:48`) → `refreshBoard`
+(`board.ts:65`). `createResolutionHandler` (`handler.ts:95`) returns a discriminated
+`ResolutionResult` (`handler.ts:26`) the consumer branches on — it never throws to signal a
+retry.
 
 ---
 
@@ -1249,222 +1027,66 @@ root 96 ms
 
 ### 4.1 Entrypoint
 
-`packages/game-engine/package.json:6-10`:
-
-```json
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-```
-
-`packages/game-engine/src/index.ts:1-5`, verbatim:
+`packages/game-engine/src/index.ts`, verbatim and complete:
 
 ```ts
 export * from './types';
 export * from './time';
 export * from './validate-pick';
+export * from './current-matchday';
 export * from './resolve-matchday';
 export * from './standings';
+export * from './board';
+export * from './pick-result';
 ```
 
-`src/test-support/build.ts` is **not** exported from the entrypoint. It is imported by
-relative path from the engine's own tests only (`src/index.test.ts:15`,
-`src/resolve-matchday.test.ts:11`, `src/validate-pick.test.ts:3`, `src/property.test.ts:13`,
-`src/standings.test.ts:3`) and by nothing in `apps/`.
+`packages/game-engine/src/test-support/build.ts` is not exported.
 
-The package has zero runtime dependencies (`packages/game-engine/package.json:17-25`:
-only `devDependencies`); `@penka/contracts` is imported type-only, e.g.
-`packages/game-engine/src/types.ts:1`:
+### 4.2 Exported signatures
 
-```ts
-import type { EntryStatus, ErrorCode } from '@penka/contracts';
-```
+| Signature                                                                              | File:line                                            |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `type PickRejectionCode = Extract<…>`                                                  | `src/types.ts:7`                                     |
+| `type ResolveRejectionCode = Extract<…>`                                                | `src/types.ts:12`                                    |
+| `type PickValidation = { ok: true } \| { ok: false; code: PickRejectionCode }`           | `src/types.ts:17`                                    |
+| `interface EntryEffect`                                                                  | `src/types.ts:20`                                    |
+| `type PickResult = 'won' \| 'lost' \| 'void'`                                            | `src/types.ts:37`                                    |
+| `interface ResolutionSummary` / `interface ResolutionOutcome`                            | `src/types.ts:39`, `:53`                             |
+| `type ResolveMatchdayResult = …`                                                         | `src/types.ts:63`                                    |
+| `function isoToEpochMs(iso: string): number`                                             | `src/time.ts:6`                                      |
+| `function tryIsoToEpochMs(iso: string): number \| null`                                  | `src/time.ts:15`                                     |
+| `function validatePick(input: ValidatePickInput): PickValidation`                        | `src/validate-pick.ts:24`                            |
+| `function selectCurrentMatchday<T extends MatchdayProgress>(…)`                          | `src/current-matchday.ts:19`                         |
+| `function didTeamWin(matches: readonly Match[], teamCode: string): boolean`              | `src/resolve-matchday.ts:33`                         |
+| `function resolveMatchday(input: ResolveMatchdayInput): ResolveMatchdayResult`           | `src/resolve-matchday.ts:113`                        |
+| `function computeStandings(entries: readonly Entry[]): Standings`                        | `src/standings.ts:29`                                |
+| `function rankWinners(entries: readonly Entry[]): Entry[]`                               | `src/standings.ts:41`                                |
+| `function isMatchdayLocked(matchday: Matchday, now: Date): boolean`                      | `src/board.ts:47`                                    |
+| `function buildBoard(input: BuildBoardInput): Board`                                     | `src/board.ts:61`                                    |
+| `function pickResultOf(effect: EntryEffect): PickResult`                                 | `src/pick-result.ts:16`                              |
 
-### 4.2 Exported function signatures, verbatim
+The engine has no runtime dependencies and no I/O: every function takes plain contract
+values and a `now: Date` where time matters.
 
-```ts
-// packages/game-engine/src/time.ts:6
-export function isoToEpochMs(iso: string): number
+`resolveMatchday` returns a **Result**, not a thrown error (`src/types.ts:63`): the worker
+branches on it, which is what lets a "not yet" answer become a counted retry rather than a
+crash.
 
-// packages/game-engine/src/time.ts:15
-export function tryIsoToEpochMs(iso: string): number | null
+`pickResultOf` exists so the player app never re-derives whether a pick won —
+`apps/web` asks the engine (commit `2c08288`).
 
-// packages/game-engine/src/validate-pick.ts:24
-export function validatePick(input: ValidatePickInput): PickValidation
+### 4.3 Which matchday is "current"
 
-// packages/game-engine/src/resolve-matchday.ts:98
-export function resolveMatchday(input: ResolveMatchdayInput): ResolveMatchdayResult
+`packages/game-engine/src/current-matchday.ts:19` — `selectCurrentMatchday` returns the
+lowest-numbered matchday that is **still unresolved**.
 
-// packages/game-engine/src/standings.ts:29
-export function computeStandings(entries: readonly Entry[]): Standings
+Consequences a reader must know before writing an assertion against a board:
 
-// packages/game-engine/src/standings.ts:41
-export function rankWinners(entries: readonly Entry[]): Entry[]
-```
-
-Both engine entry points take a single input object; neither takes positional domain
-arguments.
-
-Input and output types, verbatim.
-
-`packages/game-engine/src/validate-pick.ts:5-13`:
-
-```ts
-export interface ValidatePickInput {
-  entry: Entry;
-  matchday: Matchday;
-  matches: readonly Match[];
-  teamCode: string;
-  /** The caller's clock as an ISO-8601 instant — the engine never reads the system clock. */
-  now: string;
-  settings: PenkaSettings;
-}
-```
-
-`packages/game-engine/src/resolve-matchday.ts:4-10`:
-
-```ts
-export interface ResolveMatchdayInput {
-  matchday: Matchday;
-  entries: readonly Entry[];
-  picks: readonly PlayerPick[];
-  matches: readonly Match[];
-  settings: PenkaSettings;
-}
-```
-
-`packages/game-engine/src/standings.ts:3-6`:
-
-```ts
-export interface Standings {
-  alive: Entry[];
-  island: Entry[];
-}
-```
-
-`packages/game-engine/src/types.ts:7-58`:
-
-```ts
-export type PickRejectionCode = Extract<
-  ErrorCode,
-  'matchday_locked' | 'on_island' | 'team_not_playing' | 'team_already_used' | 'validation_failed'
->;
-
-export type ResolveRejectionCode = Extract<
-  ErrorCode,
-  'results_missing' | 'already_resolved' | 'matchday_not_locked'
->;
-
-export type PickValidation = { ok: true } | { ok: false; code: PickRejectionCode };
-
-/** What resolution does to one entry. Deltas only — persistence applies them. */
-export interface EntryEffect {
-  entryId: string;
-  /** -1 on a lost matchday for an alive entry, otherwise 0. Never drives lives negative. */
-  livesDelta: 0 | -1;
-  /** 1 for a correct pick (any status — points count total correct picks), otherwise 0. */
-  pointsDelta: 0 | 1;
-  newLives: number;
-  newStatus: EntryStatus;
-  /** Team code to append to the entry's usedTeams, or null when no valid pick was played. */
-  teamConsumed: string | null;
-}
-
-export interface ResolutionSummary {
-  totalEntries: number;
-  aliveBefore: number;
-  aliveAfter: number;
-  islandBefore: number;
-  islandAfter: number;
-  eliminated: number;
-}
-
-/**
- * Deterministic result of resolving one matchday. Carries the matchday's id and
- * number so the persistence layer can enforce idempotency (refuse to apply the
- * same matchday's effects twice).
- */
-export interface ResolutionOutcome {
-  matchdayId: string;
-  matchdayNumber: number;
-  /** One effect per input entry, in input order. */
-  effects: EntryEffect[];
-  /** Entries that went from alive to island this matchday. */
-  eliminatedEntryIds: string[];
-  summary: ResolutionSummary;
-}
-
-export type ResolveMatchdayResult =
-  | { ok: true; outcome: ResolutionOutcome }
-  | { ok: false; code: ResolveRejectionCode };
-```
-
-The effect field is named `teamConsumed` (`types.ts:29`), typed `string | null` — not
-`teamCodeConsumed`. Engine-side team parameters are plain `string`, not the branded
-`TeamCodeSchema` type (`validate-pick.ts:9`, `types.ts:29`).
-
-### 4.3 Fixture team codes
-
-`packages/game-engine/src/test-support/build.ts:16-50`:
-
-```ts
-export function buildMatch(overrides: Partial<Match> = {}): Match {
-  return {
-    id: 'match-1',
-    matchdayId: 'md-1',
-    homeTeamCode: 'HOME',
-    awayTeamCode: 'AWAY',
-    kickoffAt: '2026-08-21T19:00:00.000Z',
-    outcome: 'home',
-    ...overrides,
-  };
-}
-...
-export function buildPick(overrides: Partial<PlayerPick> = {}): PlayerPick {
-  return {
-    id: 'pick-1',
-    entryId: 'entry-1',
-    matchdayId: 'md-1',
-    teamCode: 'HOME',
-    createdAt: '2026-08-20T12:00:00.000Z',
-    ...overrides,
-  };
-}
-```
-
-Codes appearing in engine tests, with lines:
-
-| Code | Where |
-| --- | --- |
-| `HOME` | `build.ts:20`, `build.ts:46`; `resolve-matchday.test.ts:101, 286`; `validate-pick.test.ts:14, 65, 86, 138`; `index.test.ts:26` |
-| `AWAY` | `build.ts:21`; `resolve-matchday.test.ts:51, 76, 102`; `validate-pick.test.ts:26`; `index.test.ts:32` |
-| `GHOST` | `resolve-matchday.test.ts:116, 217` |
-| `CC`, `DD` | `resolve-matchday.test.ts:242` |
-| `UNKN` | `validate-pick.test.ts:67, 88` |
-| `ELSE` | `validate-pick.test.ts:96, 108, 109` |
-| `T0`, `T1`, … (`` `T${2 * i}` ``) | `property.test.ts:27-28, 49` |
-
-`HOME`, `AWAY`, `GHOST`, `ELSE` are 4–5 characters of `[A-Z]`; they satisfy
-`TeamCodeSchema` (§1.4) but the engine never validates against it.
-
-Other fixture builders: `buildMatchday` (`build.ts:5`), `buildEntry` (`build.ts:28`),
-`buildSettings` (`build.ts:52`, returns `{ lives: 2, islandEnabled: true }`),
-`deepFreeze` (`build.ts:57`), `createRng` (`build.ts:68`, seeded LCG).
-
-Contracts fixtures use a different alphabet — `packages/contracts/src/test-support/fixtures.ts:44-49`:
-
-```ts
-/**
- * A catalog team code. Teams are identified by their stable, league-scoped
- * `code` everywhere — matches, picks and used-team lists all carry codes, never
- * a generated id.
- */
-export const teamCode = 'RIV';
-```
-
-with `RIV` / `BOC` throughout (`fixtures.ts:12, 34, 39, 54-55, 92, 100, 129-130`).
+- After a matchday resolves, the board **advances**: `matchday` increments, `isResolved`
+  goes back to `false`, and every `pick` is `null` again.
+- The resolved matchday moves into `board.history`, which is therefore the observable
+  end-of-pipeline signal, not `isResolved`.
+- Picks become visible on **close** (`isLocked === true`), not on resolve.
 
 ---
 
@@ -1472,10 +1094,11 @@ with `RIV` / `BOC` throughout (`fixtures.ts:12, 34, 39, 54-55, 92, 100, 129-130`
 
 ### 5.1 `makeTestConfig`
 
-`apps/api/test/integration/harness.ts:28-44`, verbatim:
+Two copies, one per app with integration tests, both taking `Partial<AppConfig>` overrides.
+
+`apps/api/test/integration/harness.ts:30-44`
 
 ```ts
-/** A valid AppConfig against the started containers, with a fresh database per call. */
 export function makeTestConfig(infra: TestInfra, overrides: Partial<AppConfig> = {}): AppConfig {
   return {
     port: 0,
@@ -1494,122 +1117,82 @@ export function makeTestConfig(infra: TestInfra, overrides: Partial<AppConfig> =
 }
 ```
 
-Signature: `makeTestConfig(infra: TestInfra, overrides: Partial<AppConfig> = {}): AppConfig`.
-Defaults as listed above. `randomUUID` is imported at `harness.ts:1`.
+`apps/backoffice-api/test/integration/harness.ts:49-64` adds `rabbitUrl` and
+`adminApiKey: TEST_ADMIN_KEY` (`'integration-test-admin-key-0123456789'`, `:50`).
 
 ### 5.2 How a test gets a database name
 
-Each `makeTestConfig(infra)` call generates `penka-test-<8 hex chars>` — a fresh database
-per call, not per file (`harness.ts:33`). Two tests deliberately override it to share a
-database with the main app instance:
-
-- `apps/api/test/integration/penkas.int.test.ts:484` `mongoDbName: config.mongoDbName,`
-- `apps/api/test/integration/penkas.int.test.ts:507` `mongoDbName: config.mongoDbName,`
-
-The fixed `jwtSecret` (`harness.ts:35`) is what makes tokens minted by one app instance
-valid on another.
+`penka-test-${randomUUID().slice(0, 8)}`, minted per `makeTestConfig` call, so every test
+file — and every app built inside one — gets its own database on the shared container.
 
 ### 5.3 Testcontainers helpers
 
-`apps/api/test/integration/harness.ts:6-26`, verbatim:
+`apps/api/test/integration/harness.ts:13-27` starts `mongo:7` and `redis:7` in parallel on
+random host ports, "Same images as infra/docker-compose.yml".
 
-```ts
-export interface TestInfra {
-  mongoUrl: string;
-  redisUrl: string;
-  stop(): Promise<void>;
-}
+`apps/backoffice-api/test/integration/harness.ts:8-14` explains why the broker lives in this
+package and not a shared one:
 
-/** Same images as infra/docker-compose.yml, on random host ports. */
-export async function startInfra(): Promise<TestInfra> {
-  const [mongo, redis] = await Promise.all([
-    new GenericContainer('mongo:7').withExposedPorts(27017).start(),
-    new GenericContainer('redis:7').withExposedPorts(6379).start(),
-  ]);
-
-  return {
-    mongoUrl: `mongodb://${mongo.getHost()}:${mongo.getMappedPort(27017)}`,
-    redisUrl: `redis://${redis.getHost()}:${redis.getMappedPort(6379)}`,
-    stop: async () => {
-      await Promise.all([mongo.stop(), redis.stop()]);
-    },
-  };
-}
+```
+ * This package's own harness, deliberately a sibling of @penka/api's rather
+ * than a shared module: an app cannot import from another app's test folder,
+ * and only this one publishes anything. Keeping the broker here means the
+ * public API's suite never pays RabbitMQ's ~15s boot for tests that have no
+ * queue in them, while every test in THIS package runs against a real broker
+ * with the real topology — no flag to forget, no second code path.
 ```
 
-Third helper — `apps/api/test/integration/harness.ts:46-76`:
+RabbitMQ needs an explicit wait strategy (`:33-38`):
 
 ```ts
-type CollectionFactory = Db['collection'];
-
-/**
- * Make the next insert into `collectionName` reject, simulating a transient
- * Mongo write failure. Returns a restore function; call it in a finally block.
- */
-export function failNextInsert(db: Db, collectionName: string): () => void {
+    // The AMQP port accepts connections before the broker will serve them, so
+    // wait for the line that says it is actually up.
+    new GenericContainer('rabbitmq:3-management')
+      .withExposedPorts(5672)
+      .withWaitStrategy(Wait.forLogMessage(/Server startup complete/))
+      .withStartupTimeout(120_000)
 ```
 
-It patches `db.collection` with a proxy that rejects the next `insertOne` on the named
-collection and returns a restore function (`harness.ts:72-75`). Used at
-`apps/api/test/integration/auth.int.test.ts:133` and `:242`, both with `'refreshTokens'`.
+Other helpers: `failNextInsert` (`apps/api/test/integration/harness.ts:53-78`) patches
+`db.collection` through a `Proxy` to make one insert reject; `connectTestBroker`
+(`apps/backoffice-api/test/integration/harness.ts:87-119`) opens a second connection that
+declares the same topology and drains the queue; `captureLogs` (`:127-141`) turns Fastify's
+logger into an array of parsed lines; `startStack`
+(`apps/workers/test/integration/harness.ts:152-171`) boots a real worker against a
+numbered Redis database.
 
-The complete harness export list is: `TestInfra` (6), `startInfra` (13),
-`makeTestConfig` (29), `failNextInsert` (52). There is no per-test DB cleanup helper and no
-`buildTestApp` wrapper — each file calls `buildApp` directly, e.g.
-`apps/api/test/integration/health.int.test.ts:10-19`:
+### 5.4 Redis DB indexes actually claimed
 
-```ts
-  beforeAll(async () => {
-    infra = await startInfra();
-    app = buildApp({ config: makeTestConfig(infra) });
-    await app.ready();
-  });
+There is no allocator — a claim is a comment at the top of the suite that made it, and
+every suite restates the whole table. `apps/api/test/integration/game.int.test.ts:1-5`:
 
-  afterAll(async () => {
-    await app.close();
-    await infra.stop();
-  });
+```
+ * Redis databases: this module claims `/7` and `/8` for throttled app instances.
+ * `/1`–`/4` belong to auth.int.test.ts and `/5`–`/6` to penkas.int.test.ts (there
+ * is no allocator, so the claim is this comment). No game route is throttled
+ * today, so nothing here overrides the default database yet.
 ```
 
-Every integration file starts its **own** containers in `beforeAll` (`auth.int.test.ts:58-59`,
-`catalog.int.test.ts:16-18`, `health.int.test.ts:10-13`, `penkas.int.test.ts` — same
-pattern). There is no shared global setup file.
+Claimed versus actually used:
 
-### 5.4 Redis DB indexes already claimed
+| Index       | Claimed by                                                        | Used?                                                                     |
+| ----------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `/1`–`/4`   | `apps/api/test/integration/auth.int.test.ts`                       | yes — `:318,342,363,389`                                                   |
+| `/5`–`/6`   | `apps/api/test/integration/penkas.int.test.ts`                     | yes — `:486,509`                                                            |
+| `/7`–`/8`   | `apps/api/test/integration/game.int.test.ts:1`                     | no — reserved; no game route is throttled                                   |
+| `/9`–`/10`  | `apps/backoffice-api/test/integration/admin.int.test.ts:1`         | no — reserved; no admin route is throttled                                  |
+| `/11`–`/12` | `apps/workers/test/integration/resolution.int.test.ts:60`          | `/11` only (`const REDIS_DB = 11`, `:68`); `/12` reserved for the next suite |
 
-`grep -rn "redisUrl" apps/api/test` — every claimed index, with the test that claims it:
-
-| Redis DB | File:line | Test |
-| --- | --- | --- |
-| default (no suffix) | `harness.ts:34` | every app built from `makeTestConfig` without an override |
-| `/1` | `auth.int.test.ts:318` | `'throttles login with 429 rate_limited after the configured burst'` (`auth.int.test.ts:316`) |
-| `/2` | `auth.int.test.ts:342` | `'throttles register with 429 rate_limited after the configured burst'` (`auth.int.test.ts:340`) |
-| `/3` | `auth.int.test.ts:363` | `'buckets per forwarded client IP when trustProxy is configured'` (`auth.int.test.ts:359`) |
-| `/4` | `auth.int.test.ts:389` | `'ignores forwarded IP headers when trustProxy is off'` (`auth.int.test.ts:387`) |
-| `/5` | `penkas.int.test.ts:486` | `'throttles per IP, so one host cannot walk the code space'` (`penkas.int.test.ts:479`) |
-| `/6` | `penkas.int.test.ts:509` | `'throttles per user, so switching IP does not buy a fresh budget'` (`penkas.int.test.ts:503`) |
-
-Indexes are hand-allocated as string suffixes on the URL, e.g.
-`penkas.int.test.ts:486`:
-
-```ts
-          redisUrl: `${infra.redisUrl}/5`,
-```
-
-There is no allocator function and no central registry of claimed indexes.
+Mongo is split differently: per **test** rather than per module.
+`apps/workers/test/integration/harness.ts` generates one database name and hands it to the
+worker *and* to both APIs, because a worker resolving a different database than the test
+seeded is a green test that proves nothing.
 
 ### 5.5 Vitest configuration
 
-`packages/config/vitest.js:1-21`, verbatim:
+`packages/config/vitest.js`, verbatim and complete:
 
 ```js
-/**
- * Shared Vitest presets. Spread into `defineConfig()` in each package:
- *
- *   import { defineConfig } from 'vitest/config';
- *   import { unitTestConfig } from '@penka/config/vitest';
- *   export default defineConfig(unitTestConfig);
- */
 export const unitTestConfig = {
   test: {
     include: ['src/**/*.test.ts'],
@@ -1626,24 +1209,33 @@ export const integrationTestConfig = {
 };
 ```
 
-`apps/api/vitest.config.ts:1-4` and `apps/api/vitest.integration.config.ts:1-4` each spread
-one preset unchanged. `packages/game-engine/vitest.config.ts:4-15` extends the unit preset
-with coverage thresholds:
+The two suites cannot see each other's files: unit tests are `src/**/*.test.ts` and
+integration tests are `test/**/*.int.test.ts`, matched by different configs and run by
+different scripts.
 
-```ts
-export default defineConfig({
-  ...unitTestConfig,
-  test: {
-    ...unitTestConfig.test,
-    coverage: {
-      provider: 'v8',
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/test-support/**'],
-      thresholds: { lines: 100, branches: 100, functions: 100, statements: 100 },
-    },
-  },
-});
-```
+### 5.6 The `e2e` workspace
+
+`e2e/package.json` — a workspace package with **no `test` script**, so `turbo run test` never
+launches a browser. Its scripts are `e2e` (`playwright test`), `e2e:install`, `build`
+(`tsc --noEmit`) and `lint`.
+
+`e2e/playwright.config.ts` — `fullyParallel: false`, `workers: 1`, `retries: 0`,
+`timeout: 5 * 60_000`, `globalSetup: './support/global-setup.ts'`, one chromium project,
+`use.baseURL = env.webUrl`. There is no Playwright `webServer`: the suite asserts against a
+stack the operator started with `pnpm demo`, workers included.
+
+`e2e/support/reset.ts` wipes documents with `deleteMany({})` per collection and deletes the
+Redis keys `penka:*:board`, `ops:pollingProfile` and `fastify-rate-limit-*`. It never drops
+the database, because dropping would take the unique indexes of §2.4 with it — the very
+mechanisms under test. The wipe is also required for determinism: lock offsets are relative
+to first materialization (§2.10), so only a fresh calendar guarantees an open matchday.
+
+`e2e/support/api.ts` decodes every response through `Value.Check` against the
+`@penka/contracts` schema, so contract drift fails the suite with the offending field named.
+
+`e2e/tsconfig.json` widens `lib` to `["ES2022", "DOM"]` — the shared `node.json` preset has
+no DOM, and the callbacks handed to `page.addInitScript` are compiled here but run in the
+browser.
 
 ---
 
@@ -1651,16 +1243,7 @@ export default defineConfig({
 
 ### 6.1 Root `package.json`
 
-`package.json:1-22`, verbatim:
-
 ```json
-{
-  "name": "penka-survivor",
-  "private": true,
-  "packageManager": "pnpm@9.15.9",
-  "engines": {
-    "node": ">=20"
-  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -1669,222 +1252,134 @@ export default defineConfig({
     "test:integration": "turbo run test:integration",
     "lint": "turbo run lint",
     "format": "prettier --write .",
+    "demo": "node scripts/demo.mjs",
+    "e2e": "pnpm --filter @penka/e2e e2e",
+    "e2e:install": "pnpm --filter @penka/e2e e2e:install",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d --wait",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
   },
-  "devDependencies": {
-    "prettier": "^3.4.2",
-    "turbo": "^2.3.4"
-  }
-}
 ```
+
+`packageManager` is `pnpm@9.15.9`; `engines.node` is `>=20`.
 
 ### 6.2 Workspace scripts
 
-`pnpm-workspace.yaml:1-3`:
+| Package                 | `dev`                  | `build`         | `test`        | `test:integration`                                | `lint`      |
+| ----------------------- | ---------------------- | --------------- | ------------- | -------------------------------------------------- | ----------- |
+| `@penka/api`            | `tsx watch src/server.ts` | `tsc --noEmit` | `vitest run` | `vitest run --config vitest.integration.config.ts` | `eslint .` |
+| `@penka/backoffice-api` | `tsx watch src/server.ts` | `tsc --noEmit` | `vitest run` | `vitest run --config vitest.integration.config.ts` | `eslint .` |
+| `@penka/workers`        | `tsx watch src/index.ts`  | `tsc --noEmit` | `vitest run` | `vitest run --config vitest.integration.config.ts` | `eslint .` |
+| `@penka/web`            | `vite`                 | `vite build`    | `vitest run` | —                                                   | `eslint .` |
+| `@penka/backoffice-web` | `vite`                 | `vite build`    | `vitest run` | —                                                   | `eslint .` |
+| `@penka/contracts`      | —                      | `tsc --noEmit`  | `vitest run` | —                                                   | `eslint .` |
+| `@penka/game-engine`    | —                      | `tsc --noEmit`  | `vitest run` (+ `test:coverage`) | —                               | `eslint .` |
+| `@penka/config`         | —                      | —               | `vitest run` | —                                                   | `eslint .` |
+| `@penka/e2e`            | —                      | `tsc --noEmit`  | **none**     | —                                                   | `eslint .` |
 
-```yaml
-packages:
-  - "apps/*"
-  - "packages/*"
-```
-
-| Workspace | `dev` | `build` | `test` | `test:integration` | `test:coverage` | `lint` |
-| --- | --- | --- | --- | --- | --- | --- |
-| `@penka/api` (`apps/api/package.json:6-12`) | `tsx watch src/server.ts` | `tsc --noEmit` | `vitest run` | `vitest run --config vitest.integration.config.ts` | — | `eslint .` |
-| `@penka/backoffice-api` (`apps/backoffice-api/package.json:6-12`) | `tsx watch src/server.ts` | `tsc --noEmit` | `vitest run` | `vitest run --config vitest.integration.config.ts` | — | `eslint .` |
-| `@penka/workers` (`apps/workers/package.json:6-11`) | `tsx watch src/index.ts` | `tsc --noEmit` | `vitest run` | — | — | `eslint .` |
-| `@penka/web` (`apps/web/package.json:6-11`) | `vite` | `vite build` | `vitest run` | — | — | `eslint .` |
-| `@penka/backoffice-web` (`apps/backoffice-web/package.json:6-11`) | `vite` | `vite build` | `vitest run` | — | — | `eslint .` |
-| `@penka/contracts` (`packages/contracts/package.json:11-15`) | — | `tsc --noEmit` | `vitest run` | — | — | `eslint .` |
-| `@penka/game-engine` (`packages/game-engine/package.json:11-16`) | — | `tsc --noEmit` | `vitest run` | — | `vitest run --coverage` | `eslint .` |
-| `@penka/config` (`packages/config/package.json:14-17`) | — | — | `vitest run` | — | — | `eslint .` |
-
-`test:coverage` is defined in exactly one workspace (`@penka/game-engine`);
-`pnpm test:coverage` at the root therefore runs one package. `@penka/config` defines no
-`build`.
-
-`@penka/config` exports (`packages/config/package.json:6-13`):
-
-```json
-  "exports": {
-    "./eslint": "./eslint.js",
-    "./eslint-vue": "./eslint-vue.js",
-    "./vitest": "./vitest.js",
-    "./tsconfig/base.json": "./tsconfig/base.json",
-    "./tsconfig/node.json": "./tsconfig/node.json",
-    "./tsconfig/vue.json": "./tsconfig/vue.json"
-  },
-```
+`build` is a **typecheck** for every Node package and a real bundle only for the two Vue
+apps.
 
 ### 6.3 `turbo.json`
 
-`turbo.json:1-23`, complete and verbatim:
+`globalPassThroughEnv`, verbatim:
 
 ```json
-{
-  "$schema": "https://turbo.build/schema.json",
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "test": {
-      "dependsOn": []
-    },
-    "test:coverage": {
-      "outputs": ["coverage/**"]
-    },
-    "test:integration": {
-      "cache": false
-    },
-    "lint": {}
-  }
-}
+    "JWT_SECRET", "PORT", "MONGO_URL", "MONGO_DB", "REDIS_URL",
+    "RATE_LIMIT_MAX", "TRUST_PROXY", "RABBITMQ_URL", "ADMIN_API_KEY",
+    "PREFETCH", "MAX_ATTEMPTS", "LOG_LEVEL",
+    "VITE_API_BASE_URL", "VITE_ADMIN_API_BASE_URL",
+    "VITE_ADMIN_API_KEY", "VITE_ADMIN_RESET_ENDPOINT"
 ```
 
-There is no `env`, `globalEnv`, `passThroughEnv`, `globalDependencies`, or `inputs` key
-anywhere in the file — **no env passthrough is configured**.
+Tasks: `build` (`dependsOn: ["^build"]`, `outputs: ["dist/**"]`), `dev`
+(`cache: false, persistent: true`), `test`, `test:coverage` (`outputs: ["coverage/**"]`),
+`test:integration` (`cache: false`), `lint`.
+
+### 6.4 `pnpm demo`
+
+`scripts/demo.mjs` is plain Node ESM with no dependencies. In order: copy `.env.example` →
+`.env` when absent (announcing that the values are dev-only), load `.env` **without**
+overwriting already-exported variables, validate `JWT_SECRET` and `ADMIN_API_KEY` (present,
+≥32 characters) and exit non-zero listing every problem with the app that needs the
+variable, then `docker compose -f infra/docker-compose.yml up -d --wait`, then
+`pnpm exec turbo run dev` with stdio inherited while a concurrent poller prints the URL map
+once all four HTTP services answer.
+
+### 6.5 CI
+
+`.github/workflows/ci.yml` — two jobs on `push`: `lint-and-unit` (`pnpm lint`, `pnpm test`)
+and `integration` (`pnpm test:integration`), both on `ubuntu-latest` with Node 22 and
+`pnpm install --frozen-lockfile`.
 
 ---
 
-## 7. Recent history
+## 7. Frontends
 
-`git log --oneline -30` (the repository has 9 commits total):
+Both Vue apps are Vite + Vue 3 + Pinia and talk to their API through a dev proxy.
+`apps/web/vite.config.ts:22` and `apps/backoffice-web/vite.config.ts:24` both set
+`strictPort: true`, and both configure `server.proxy` with a comment noting that setting
+`VITE_API_BASE_URL` (resp. `VITE_ADMIN_API_BASE_URL`) bypasses the proxy entirely.
 
-```
-c56bf74 Make penka creation survive its own partial failures
-66df0f6 Harden penka materialization and duplicate-key detection
-fca356b Identify teams by catalog code everywhere, not by a generated id
-e923e18 Build the penkas module: create, join by code, and my penkas
-a1cd1da Build the catalog module: hardcoded leagues, teams and fixture templates
-4eb7f8e Build @penka/api bootstrap and authentication
-91a9fe9 Build @penka/game-engine: pure Survivor rules with 100% coverage
-25cd4c1 Build @penka/contracts: domain schemas, API contracts, canonical errors
-63a194b Bootstrap penka-survivor monorepo skeleton
-```
+Neither API registers CORS (see "Not found"), which is why the proxy — and therefore the
+fixed ports — are load-bearing for local development and for the `e2e` suite.
 
-`git status`:
-
-```
-On branch main
-nothing to commit, working tree clean
-```
-
-(Captured before this document was written; `docs/CODEBASE-CONVENTIONS.md` is new and
-untracked.)
+`apps/web` stores its session in `localStorage` under `penka.survivor.auth` as
+`{ tokens, user }`. `apps/backoffice-web/src/api/client.ts:36` declares its own
+`ADMIN_KEY_HEADER = 'x-admin-key'`.
 
 ---
 
 ## Not found / ambiguous
 
-**Not found**
-
-1. **`StrictObject` on the public surface.** Defined at `packages/contracts/src/strict.ts:7`
-   but `packages/contracts/src/index.ts:1-8` does not re-export `./strict`. Reachable only
-   via deep import.
-2. **Any exported schema or type named `Pick`, `Omit`, `Record`, `Exclude`, `Partial`, or
-   `Readonly`** in `@penka/contracts`. Grep returns no matches.
-3. **Routes for board, my-entry, current-matchday, submit-pick.** The schemas exist
-   (`packages/contracts/src/api/game.ts:12-45`) but the `printRoutes()` dump (§3.6) contains
-   no such paths, and there is no `apps/api/src/modules/game/` directory.
-4. **Any admin route in `apps/api`.** `packages/contracts/src/api/admin.ts` exports 21
-   symbols; `apps/backoffice-api/src` contains only `app.ts`, `app.test.ts`, `server.ts`.
-5. **A decorator-assertion list in `catalogRoutes`** (`apps/api/src/modules/catalog/routes.ts:16`)
-   — it declares no `REQUIRED_DECORATORS` and takes no options.
-6. **A named builder function for match `_id`s.** Only `matchdayId` is a function
-   (`calendar.ts:10`); the match id is an inline template literal at `calendar.ts:35`.
-7. **A `teams` collection.** Only six collections appear in `db.collection(...)` calls (§2.1).
-8. **Env passthrough in `turbo.json`** — no `env` / `globalEnv` / `passThroughEnv` keys.
-9. **A `test:coverage` script in any workspace except `@penka/game-engine`**, and a
-   `build` script in `@penka/config`.
-10. **`packages/game-engine/src/test-support/build.ts` on the package's public surface** —
-    `index.ts:1-5` does not export it.
-11. **A shared Vitest global-setup / container-reuse file.** Each integration test file calls
-    `startInfra()` in its own `beforeAll`.
-12. **A Redis DB-index allocator.** Indexes 1–6 are hard-coded string suffixes (§5.4).
-
-**Ambiguous / two places disagree**
-
-13. **Duplicate-key detection has two implementations.**
-    `apps/api/src/modules/penkas/mongo-errors.ts:15-23` exports `isDuplicateKeyError`
-    (handles `MongoBulkWriteError` and `MongoServerError`), while
-    `apps/api/src/modules/auth/routes.ts:90` inlines
-    `error instanceof MongoServerError && error.code === 11000`. Both are present in the
-    codebase as written.
-14. **Two different 429 messages.** `apps/api/src/plugins/rate-limit.ts:26` produces
-    `` `Rate limit exceeded, retry in ${context.after}` ``; `apps/api/src/modules/penkas/routes.ts:167`
-    produces `` `Rate limit exceeded, retry in ${result.ttlInSeconds} seconds` ``. Both carry
-    code `rate_limited`.
-15. **`authRoutes` asserts the `rateLimit` decorator but never calls it.**
-    `apps/api/src/modules/auth/routes.ts:53` requires `'rateLimit'`; the routes opt in via
-    `config: rateLimited` (`auth/routes.ts:68, 73, 114`), which is the plugin's `onRoute`
-    path. A repo-wide grep for `.rateLimit(` finds no call site.
-16. **`@fastify/rate-limit` version.** Declared `^10.2.2` (`apps/api/package.json:14`);
-    installed `10.3.0` (`node_modules/.pnpm/@fastify+rate-limit@10.3.0`). The
-    `createRateLimit` / `rateLimit` decorators quoted in §3.2 and §3.5 are from the
-    installed 10.3.0.
-17. **Test collection access bypasses the typed accessors.** Integration tests call
-    `db.collection('penkas')` etc. with no type parameter (13 sites listed in §2.1), and once
-    with an ad-hoc inline type (`penkas.int.test.ts:283`), rather than
-    `penkasCollection(db)` / `matchdaysCollection(db)`.
-18. **Team codes are `string` in the engine, `TeamCodeSchema` in contracts.**
-    `validate-pick.ts:9` (`teamCode: string`) and `types.ts:29` (`teamConsumed: string | null`)
-    versus `domain.ts:32-36`. The engine's own fixtures use `HOME`/`AWAY`/`GHOST`/`ELSE`
-    while the contracts fixtures use `RIV`/`BOC`.
-19. **`CreatePenkaRequestSchema.settings` is required** (`packages/contracts/src/api/penkas.ts:21`)
-    even though both of its fields are optional; a create request must still send
-    `settings: {}`. The comment above it (`api/penkas.ts:9`) speaks only to the fields.
-20. **Defaults are applied twice.** `CreatePenkaSettingsSchema` declares AJV `default`s
-    (`api/penkas.ts:11-14`) and the handler re-applies them
-    (`apps/api/src/modules/penkas/routes.ts:190-195`), with the comment
-    "The schema fills these in, but the request type keeps them optional — apply the same
-    documented defaults rather than trusting AJV to have run."
-21. **`ensurePenkaIndexes` / `ensureAuthIndexes` run at route-plugin registration, not at
-    app boot.** `penkas/routes.ts:131` and `auth/routes.ts:66`; `apps/api/src/app.ts` never
-    calls either.
-22. **The environment header for this session reported "Is a git repository: false"**, yet
-    `git log` and `git status` both work in `/Users/agustinfarias/projects/penka/penka-survivor`.
+- **No CORS plugin anywhere.** `@fastify/cors` appears in no `package.json` and is imported
+  by no file. Both browsers reach their API through the Vite dev proxy; a deployment that
+  serves the SPAs from a different origin would need it.
+- **`ADMIN_KEY_HEADER` is declared twice and exported by neither package's public surface.**
+  `apps/backoffice-api/src/plugins/admin-auth.ts:17` and
+  `apps/backoffice-web/src/api/client.ts:36` each define the literal `'x-admin-key'`, and
+  two test harnesses spell it inline (`apps/backoffice-api/test/integration/harness.ts:51`,
+  `apps/workers/test/integration/harness.ts:69`). It is a cross-app string with no compiler
+  checking it — the same argument `@penka/contracts` makes for queue names and Redis keys —
+  but it is not in the contract.
+- **No OpenAPI/Swagger.** No `@fastify/swagger`, no generated spec. The TypeBox schemas are
+  the only machine-readable description of the API.
+- **No Dockerfiles.** `infra/docker-compose.yml` provisions Mongo/Redis/RabbitMQ only; the
+  apps are run from source by `turbo run dev`. There is no production image or deployment
+  manifest in the repository.
+- **CI does not run `pnpm build` or `pnpm e2e`.** `.github/workflows/ci.yml` runs lint, unit
+  and integration tests. A type error that only `tsc --noEmit` catches, or a broken demo
+  flow, would pass CI.
+- **`/7`–`/10` and `/12` are reserved but unused** (§5.4). The comments claiming them are
+  accurate about intent and about the absence of an allocator, but no test uses them today —
+  a reader taking the table as a description of running code would be misled.
+- **No `test` script for `@penka/e2e` is deliberate**, not an omission — but it also means
+  `turbo run test` gives the e2e suite no coverage gate of any kind.
+- **Penkas have no end state.** Nothing in the repository marks a penka finished, which is
+  why the join-code index is a plain unique index and not a partial one over active penkas
+  (`apps/api/src/modules/penkas/store.ts:69-72` names this as the future change).
 
 ---
 
 ## Accepted as-is
 
-Inconsistencies recorded above that are **deliberate**, not defects awaiting a fix. Anyone
-reading the ambiguity list should stop here before "unifying" them.
+Decisions that look like gaps and are documented in the code as choices:
 
-1. **Two different 429 message wordings** (ambiguity #14): the plugin builder says
-   `Rate limit exceeded, retry in ${context.after}` (a humanized string like "1 minute"),
-   the join route says `Rate limit exceeded, retry in ${result.ttlInSeconds} seconds`.
-   Both carry code `rate_limited` and a `retry-after` header, which is what clients act on;
-   the message is human-facing prose, so a single wording would buy nothing and would mean
-   reimplementing one path's formatting inside the other.
-2. **Engine team params are plain `string` while contracts brand `TeamCodeSchema`**
-   (ambiguity #18): `validate-pick.ts:9` and `types.ts:29` take `string`, `domain.ts:32-36`
-   constrains `^[A-Z0-9]{2,5}$`. The engine validates game rules, not payload shape — the
-   code alphabet exists so derived document ids stay unambiguous, which is a storage and
-   wire concern enforced at the API boundary. Keeping the engine on `string` is what lets
-   it stay dependency-free and lets its fixtures use readable codes (`HOME`, `AWAY`,
-   `GHOST`) instead of catalog ones.
+| Decision                                         | Recorded at                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| 4-digit join codes, 10,000-code ceiling          | `apps/api/src/modules/penkas/join-code.ts:3-12`                   |
+| One shared admin API key, no operator identity    | `apps/backoffice-api/src/plugins/admin-auth.ts:31-43`             |
+| One global polling profile, not per penka         | `packages/contracts/src/ops.ts:4-18`                              |
+| 60-second board cache, not invalidated on close   | `packages/contracts/src/ops.ts:41-51`                             |
+| `prefetch = 1` as an ordering guarantee           | `apps/workers/src/messaging/consumer.ts:108-114`                  |
+| No retry backoff                                  | `apps/workers/src/messaging/consumer.ts:63-72`                    |
+| Document shapes duplicated per process            | `apps/api/src/modules/game/store.ts:29-33`                        |
+| Team codes instead of team documents              | `apps/api/src/modules/penkas/store.ts:36-40`                      |
+| Idempotent join answers 200, not 409              | `apps/api/src/modules/penkas/routes.ts:88-93`                     |
+| No health endpoint on the workers                 | `apps/workers/src/worker.ts:26-31`                                |
 
-### Superseded by later commits
+### Superseded by earlier editions of this document
 
-This document is a snapshot at `c56bf74`; the quotes above are left as captured. Three
-claims no longer describe the tree:
-
-- **Ambiguity #13 (duplicate-key detection has two implementations)** — resolved.
-  `isDuplicateKeyError` moved to `apps/api/src/lib/mongo-errors.ts`; `auth/routes.ts` calls
-  it instead of inlining `error.code === 11000`. §2.6's file path is now `src/lib/`.
-- **§1.4 / §1.5 `BoardPlayerSchema`** — it now carries `points` and `pick` as well as
-  `displayName` and `lives`, and `BoardSchema`'s invariant comment was rewritten in the
-  same commit: a pick is public from the moment the matchday locks, and the board builder
-  writes `null` before lock.
-- **§6.3 and not-found #8 (no env passthrough in `turbo.json`)** — resolved.
-  `globalPassThroughEnv` now lists `JWT_SECRET`, `PORT`, `MONGO_URL`, `MONGO_DB`,
-  `REDIS_URL`, `RATE_LIMIT_MAX`, `TRUST_PROXY` (the exact set `apps/api/src/config.ts`
-  reads), so `pnpm dev --filter @penka/api` boots from exported shell env.
-    Section 7 reports the actual command output.
+The previous edition audited `c56bf74` and described a repository with four workspace
+packages, no game module, no `picks`/`resolutions` collections, no id builders in the
+contract, and no back office, workers or frontends. Every section above replaces the
+corresponding one; nothing from that edition should be quoted as current.
