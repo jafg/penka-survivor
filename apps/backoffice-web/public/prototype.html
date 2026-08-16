@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<!--
+  Survivor — Penka · back office (prototype)
+  Desktop operator console. Same API client as the player app (penka-api.js).
+  Everything here maps to admin endpoints; no game rules run on this client.
+  Target implementation: Angular, matching Penka's existing back office.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back office — Survivor · Penka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#FDA328; --accent-strong:#E5860F; --accent-wash:rgba(253,163,40,.14);
+  --bg:#0D1420; --surface:#172232; --surface-raised:#253344; --border:#2C3C4F;
+  --fg:#EAF0F7; --fg-muted:#8496AB; --fg-dim:#56697F;
+  --positive:#6BA352; --warning:#F2C230; --danger:#CE4B42;
+  --radius-sm:8px; --radius-md:14px;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg);color:var(--fg);min-height:100vh;
+  font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.display{font-family:"Barlow Condensed","DM Sans",sans-serif;text-transform:uppercase;letter-spacing:.02em;line-height:1}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:flex;align-items:center;gap:14px;padding:14px 26px;
+  border-bottom:1px solid var(--border);background:var(--bg);
+  position:sticky;top:0;z-index:20;
+}
+.topbar .logo{height:24px;width:auto;display:block}
+.topbar .divider{width:1px;height:19px;background:var(--border)}
+.topbar .product{
+  font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  font-size:14px;letter-spacing:.12em;color:var(--accent);font-weight:700;
+}
+.topbar .context{font-size:12.5px;color:var(--fg-muted)}
+.topbar .spacer{flex:1}
+.mode-pill{
+  padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+  font-family:var(--mono);font-size:11px;color:var(--fg-muted);
+}
+
+/* ---------- layout ---------- */
+.layout{
+  max-width:1320px;margin:0 auto;padding:22px 26px 60px;
+  display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start;
+}
+@media(max-width:1080px){ .layout{grid-template-columns:minmax(0,1fr)} }
+
+.panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);
+  margin-bottom:18px;overflow:hidden;
+}
+.panel-head{
+  display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);
+}
+.panel-head h2{
+  margin:0;font-family:"Barlow Condensed",sans-serif;font-weight:700;
+  text-transform:uppercase;font-size:16px;letter-spacing:.1em;
+}
+.panel-head .hint{font-size:12px;color:var(--fg-muted)}
+.panel-head .spacer{flex:1}
+.panel-body{padding:18px}
+
+/* ---------- state summary ---------- */
+.status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:18px}
+@media(max-width:760px){ .status-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.status-cell{padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.status-cell .label{
+  display:block;font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  font-size:11px;letter-spacing:.14em;color:var(--fg-dim);margin-bottom:5px;
+}
+.status-cell .value{display:block;font-size:20px;font-weight:700}
+.status-cell .value.small{font-size:15px;font-weight:500}
+
+.pill{
+  display:inline-block;padding:3px 9px;border-radius:999px;border:1px solid var(--border);
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-muted);
+}
+.pill--open{border-color:rgba(107,163,82,.55);color:var(--positive)}
+.pill--locked{border-color:rgba(242,194,48,.5);color:var(--warning)}
+.pill--resolved{border-color:rgba(253,163,40,.5);color:var(--accent)}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{
+  text-align:left;padding:10px 18px;border-bottom:1px solid var(--border);
+  font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  font-size:12px;letter-spacing:.12em;color:var(--fg-dim);font-weight:700;
+}
+tbody td{padding:11px 18px;border-bottom:1px solid rgba(44,60,79,.5);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(37,51,68,.35)}
+.cell-strong{font-weight:500}
+.cell-muted{color:var(--fg-muted);font-size:12.5px}
+
+/* ---------- outcome selector ---------- */
+.outcome-group{display:inline-flex;gap:6px}
+.outcome-btn{
+  padding:6px 11px;cursor:pointer;background:var(--surface-raised);
+  border:1px solid var(--border);color:var(--fg);border-radius:var(--radius-sm);
+  font-family:"Barlow Condensed",sans-serif;font-size:14px;letter-spacing:.04em;
+}
+.outcome-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.outcome-btn:disabled{opacity:.45;cursor:not-allowed}
+.outcome-btn.is-selected{background:var(--accent);border-color:var(--accent);color:#241503}
+.outcome-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- buttons ---------- */
+.btn{
+  padding:11px 18px;border:none;border-radius:var(--radius-sm);cursor:pointer;
+  font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  font-size:15px;font-weight:700;letter-spacing:.06em;
+  background:var(--accent);color:#241503;transition:background .15s;
+}
+.btn:hover:not(:disabled){background:var(--accent-strong)}
+.btn:disabled{background:var(--surface-raised);color:var(--fg-dim);cursor:not-allowed}
+.btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.btn--ghost{background:none;border:1px solid var(--border);color:var(--fg)}
+.btn--ghost:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn--danger{background:none;border:1px solid rgba(206,75,66,.55);color:var(--danger)}
+.btn--danger:hover:not(:disabled){background:rgba(206,75,66,.12)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* ---------- ops ---------- */
+.segmented{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.segmented button{
+  padding:8px 14px;background:none;border:none;cursor:pointer;color:var(--fg-muted);
+  font-family:inherit;font-size:12.5px;
+}
+.segmented button + button{border-left:1px solid var(--border)}
+.segmented button.is-selected{background:var(--accent);color:#241503;font-weight:700}
+.field-note{margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--fg-muted)}
+
+/* ---------- API console ---------- */
+.console{max-height:520px;overflow-y:auto;padding:0}
+.log-entry{
+  display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:baseline;
+  padding:9px 18px;border-bottom:1px solid rgba(44,60,79,.5);
+  font-family:var(--mono);font-size:11.5px;
+}
+.log-entry:last-child{border-bottom:none}
+.log-method{font-weight:500;color:var(--accent)}
+.log-path{color:var(--fg);word-break:break-all}
+.log-meta{color:var(--fg-dim);white-space:nowrap}
+.log-entry.is-error .log-method{color:var(--danger)}
+.log-entry.is-error .log-path{color:var(--danger)}
+.log-empty{padding:26px 18px;color:var(--fg-dim);font-size:12.5px;text-align:center}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;right:26px;bottom:26px;z-index:60;max-width:380px;
+  padding:14px 18px;border-radius:var(--radius-md);box-shadow:0 12px 30px rgba(0,0,0,.5);
+  background:var(--positive);color:#0A1A06;font-size:13.5px;font-weight:500;
+}
+.toast.is-error{background:var(--danger);color:#fff}
+.toast[hidden]{display:none}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <img class="logo" src="data:image/png;base64,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" alt="Penka">
+  <span class="divider"></span>
+  <span class="product">Survivor · Back office</span>
+  <span class="context" id="tournamentContext">—</span>
+  <span class="spacer"></span>
+  <span class="mode-pill" id="modePill">—</span>
+</header>
+
+<div class="layout">
+
+  <!-- ===================== COLUMNA PRINCIPAL ===================== -->
+  <div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Estado de la fecha</h2>
+        <span class="spacer"></span>
+        <span class="hint" id="lockHint">—</span>
+      </div>
+      <div class="status-grid">
+        <div class="status-cell">
+          <span class="label">Fecha</span>
+          <span class="value tnum" id="statMatchday">—</span>
+        </div>
+        <div class="status-cell">
+          <span class="label">Estado</span>
+          <span class="value small" id="statStatus">—</span>
+        </div>
+        <div class="status-cell">
+          <span class="label">Resultados cargados</span>
+          <span class="value tnum" id="statResults">—</span>
+        </div>
+        <div class="status-cell">
+          <span class="label">Picks recibidos</span>
+          <span class="value tnum" id="statPicks">—</span>
+        </div>
+      </div>
+      <div class="panel-body" style="border-top:1px solid var(--border)">
+        <div class="btn-row">
+          <button class="btn btn--ghost" id="closeMatchday">Cerrar fecha</button>
+          <button class="btn" id="resolveMatchday">Resolver fecha</button>
+          <button class="btn btn--danger" id="resetData" style="margin-left:auto">Reiniciar datos de prueba</button>
+        </div>
+        <p class="field-note" id="resolveNote">
+          Cerrar la fecha bloquea nuevos picks. Resolver encola un job por Penka:
+          idempotente y particionado, de modo que reintentarlo no altera el resultado.
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Resultados</h2>
+        <span class="hint">POST /admin/matches/:id/result</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Partido</th><th>Hora</th><th>Resultado</th><th>Estado</th></tr>
+        </thead>
+        <tbody id="matchRows"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Penkas activas</h2>
+        <span class="hint">GET /admin/pools</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Penka</th><th>Tenant</th><th>Jugadores</th><th>En carrera</th><th>La Isla</th><th>Picks</th><th>Fechas resueltas</th></tr>
+        </thead>
+        <tbody id="poolRows"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- ===================== COLUMNA LATERAL ===================== -->
+  <div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Operación</h2>
+        <span class="hint">Polling</span>
+      </div>
+      <div class="panel-body">
+        <div class="segmented" id="pollingProfile">
+          <button data-profile="normal">Normal</button>
+          <button data-profile="live">En vivo</button>
+          <button data-profile="degraded">Degradado</button>
+        </div>
+        <p class="field-note">
+          El intervalo de polling lo define el servidor y viaja en cada respuesta.
+          Cambiarlo acá afecta a las apps ya instaladas, sin esperar una release:
+          <strong>en vivo</strong> refresca cada 2 s, <strong>degradado</strong> baja a 30 s
+          como freno de carga.
+        </p>
+        <p class="field-note">
+          Intervalo vigente: <strong class="tnum" id="currentInterval">—</strong>
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Consola de API</h2>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" id="clearLog" style="padding:5px 10px;font-size:12px">Limpiar</button>
+      </div>
+      <div class="console" id="apiLog">
+        <div class="log-empty">Sin actividad todavía.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="penka-api.js"></script>
+<script>
+"use strict";
+
+const TEAMS = PenkaAPI.TEAMS;
+const OUTCOME = PenkaAPI.OUTCOME;
+const TOURNAMENT_ID = "copa-america";
+
+const state = { matchday: null, pools: [], busy: false };
+
+const $ = selector => document.querySelector(selector);
+const createEl = (tag, className, html) => {
+  const node = document.createElement(tag);
+  if(className) node.className = className;
+  if(html != null) node.innerHTML = html;
+  return node;
+};
+
+let toastTimer = null;
+function showToast(message, isError){
+  const toast = $("#toast");
+  toast.textContent = message;
+  toast.classList.toggle("is-error", !!isError);
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 4200);
+}
+
+/* ============================================================================
+   API CONSOLE — every request the client makes, as it happens
+   ========================================================================== */
+const logEntries = [];
+PenkaAPI.onTraffic(entry => {
+  logEntries.unshift(entry);
+  if(logEntries.length > 60) logEntries.pop();
+  renderLog();
+});
+
+function renderLog(){
+  const container = $("#apiLog");
+  container.innerHTML = "";
+  if(!logEntries.length){
+    container.append(createEl("div","log-empty","Sin actividad todavía."));
+    return;
+  }
+  logEntries.forEach(entry => {
+    const failed = entry.status >= 400 || entry.status === 0;
+    container.append(createEl("div","log-entry" + (failed ? " is-error" : ""), `
+      <span class="log-method">${entry.method}</span>
+      <span class="log-path">${entry.path}${failed && entry.code ? ` — ${entry.code}` : ""}</span>
+      <span class="log-meta">${entry.status} · ${entry.ms}ms</span>`));
+  });
+}
+
+$("#clearLog").addEventListener("click", () => { logEntries.length = 0; renderLog(); });
+
+/* ============================================================================
+   LOADING
+   ========================================================================== */
+async function loadAll(){
+  try{
+    const [matchday, pools] = await Promise.all([
+      PenkaAPI.adminGetMatchday(TOURNAMENT_ID, currentMatchdayNumber()),
+      PenkaAPI.adminGetPools()
+    ]);
+    state.matchday = matchday;
+    state.pools = pools;
+    render();
+  }catch(error){
+    showToast(error.message || "No pudimos cargar el estado", true);
+  }
+}
+
+let knownMatchday = 2;
+function currentMatchdayNumber(){ return knownMatchday; }
+
+/* ============================================================================
+   RENDER
+   ========================================================================== */
+function render(){
+  const data = state.matchday;
+  if(!data) return;
+
+  knownMatchday = data.matchday.number;
+  $("#tournamentContext").textContent = `${data.tournament.name} · Fecha ${data.matchday.number}`;
+  $("#modePill").textContent = PenkaAPI._isMock ? "mock backend" : "API real";
+
+  const withResult = data.matches.filter(m => m.outcome).length;
+  const picks = state.pools.reduce((total, pool) => total + pool.picksReceived, 0);
+
+  $("#statMatchday").textContent = data.matchday.number;
+  $("#statStatus").innerHTML = statusPill(data.matchday.status);
+  $("#statResults").textContent = `${withResult}/${data.matches.length}`;
+  $("#statPicks").textContent = picks;
+  $("#currentInterval").textContent = `${data.nextPollInSec} s`;
+
+  $("#lockHint").textContent = data.matchday.isLocked
+    ? "Los picks están cerrados"
+    : data.matchday.lockAt
+      ? "Cierra " + new Date(data.matchday.lockAt).toLocaleTimeString("es-UY", { hour:"2-digit", minute:"2-digit" })
+      : "Sin fecha de cierre";
+
+  const isResolved = data.matchday.status === "resolved";
+  $("#closeMatchday").disabled = state.busy || data.matchday.isLocked || isResolved;
+  $("#resolveMatchday").disabled = state.busy || isResolved || withResult < data.matches.length;
+  $("#resolveMatchday").textContent = isResolved ? "Fecha resuelta" : "Resolver fecha";
+
+  document.querySelectorAll("#pollingProfile button").forEach(button =>
+    button.classList.toggle("is-selected", button.dataset.profile === data.pollingProfile));
+
+  renderMatches(data);
+  renderPools();
+}
+
+function statusPill(status){
+  const labels = { open:"Abierta", locked:"Cerrada", resolved:"Resuelta" };
+  return `<span class="pill pill--${status}">${labels[status] || status}</span>`;
+}
+
+function renderMatches(data){
+  const body = $("#matchRows");
+  body.innerHTML = "";
+  const isResolved = data.matchday.status === "resolved";
+
+  data.matches.forEach(match => {
+    const row = createEl("tr");
+    row.append(createEl("td","cell-strong", `${TEAMS[match.home]} vs ${TEAMS[match.away]}`));
+    row.append(createEl("td","cell-muted tnum", match.kickoff));
+
+    const outcomeCell = createEl("td");
+    const group = createEl("div","outcome-group");
+    [[OUTCOME.HOME, match.home], [OUTCOME.DRAW, "Empate"], [OUTCOME.AWAY, match.away]]
+      .forEach(([outcome, label]) => {
+        const button = createEl("button",
+          "outcome-btn" + (match.outcome === outcome ? " is-selected" : ""), label);
+        button.disabled = state.busy || isResolved;
+        button.addEventListener("click", () => setResult(match.id, outcome));
+        group.append(button);
+      });
+    outcomeCell.append(group);
+    row.append(outcomeCell);
+
+    row.append(createEl("td","cell-muted",
+      match.outcome ? "Cargado" : "Pendiente"));
+    body.append(row);
+  });
+}
+
+function renderPools(){
+  const body = $("#poolRows");
+  body.innerHTML = "";
+  state.pools.forEach(pool => {
+    const row = createEl("tr");
+    row.append(createEl("td","cell-strong", pool.name));
+    row.append(createEl("td","cell-muted", pool.tenantId));
+    row.append(createEl("td","tnum", String(pool.players)));
+    row.append(createEl("td","tnum", String(pool.alive)));
+    row.append(createEl("td","tnum", String(pool.island)));
+    row.append(createEl("td","tnum", String(pool.picksReceived)));
+    row.append(createEl("td","cell-muted",
+      pool.resolvedMatchdays.length ? pool.resolvedMatchdays.join(", ") : "—"));
+    body.append(row);
+  });
+}
+
+/* ============================================================================
+   ACTIONS
+   ========================================================================== */
+async function withBusy(action){
+  state.busy = true;
+  render();
+  try{
+    await action();
+  }catch(error){
+    showToast(error.message || "La operación falló", true);
+  }finally{
+    state.busy = false;
+    await loadAll();
+  }
+}
+
+function setResult(matchId, outcome){
+  withBusy(async () => {
+    const result = await PenkaAPI.adminSetResult(matchId, outcome);
+    showToast(result.readyToResolve
+      ? "Resultado cargado · la fecha está lista para resolver"
+      : `Resultado cargado · faltan ${result.pendingMatches}`);
+  });
+}
+
+$("#closeMatchday").addEventListener("click", () => withBusy(async () => {
+  await PenkaAPI.adminCloseMatchday(TOURNAMENT_ID, currentMatchdayNumber());
+  showToast("Fecha cerrada · no se aceptan más picks");
+}));
+
+$("#resolveMatchday").addEventListener("click", () => withBusy(async () => {
+  const result = await PenkaAPI.adminResolve(TOURNAMENT_ID, currentMatchdayNumber());
+  const eliminated = result.pools.reduce((total, pool) => total + pool.eliminated.length, 0);
+  showToast(result.idempotent
+    ? "La fecha ya estaba resuelta · sin cambios"
+    : `Fecha resuelta · ${eliminated} ${eliminated === 1 ? "jugador pasó" : "jugadores pasaron"} a La Isla`);
+}));
+
+$("#resetData").addEventListener("click", () => {
+  PenkaAPI._resetMockData();
+  showToast("Datos de prueba reiniciados");
+  loadAll();
+});
+
+document.querySelectorAll("#pollingProfile button").forEach(button =>
+  button.addEventListener("click", () => withBusy(async () => {
+    const result = await PenkaAPI.adminSetPolling(button.dataset.profile);
+    showToast(`Polling: ${result.nextPollInSec} s`);
+  })));
+
+/* ============================================================================
+   BOOT
+   ========================================================================== */
+window.addEventListener("storage", event => {
+  if(event.key && event.key.indexOf("penka.survivor.mock") === 0) loadAll();
+});
+
+loadAll();
+</script>
+</body>
+</html>

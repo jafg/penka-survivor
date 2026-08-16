@@ -1,0 +1,23 @@
+/*
+ * Design tokens — the single source of visual truth, lifted verbatim from the
+ * prototype in `public/prototype.html`. That file is the visual CONTRACT: when a
+ * value here and a value there disagree, the prototype is right.
+ *
+ * Components read these variables and never spell a colour, radius or shadow of
+ * their own — a hardcoded hex is how a design system quietly stops being one.
+ *
+ * The back office's palette is the player app's, with two differences the
+ * prototypes themselves carry: the operator console names its semantic colours
+ * `--warning` and `--danger` (the player app calls the same two hexes
+ * `--card-kept` and `--card-lost`, because there they are life cards), and it
+ * adds `--mono` for the API console. Neither app owns the palette, so neither
+ * one's names are renamed to match the other.
+ */
+:root{
+  --accent:#FDA328; --accent-strong:#E5860F; --accent-wash:rgba(253,163,40,.14);
+  --bg:#0D1420; --surface:#172232; --surface-raised:#253344; --border:#2C3C4F;
+  --fg:#EAF0F7; --fg-muted:#8496AB; --fg-dim:#56697F;
+  --positive:#6BA352; --warning:#F2C230; --danger:#CE4B42;
+  --radius-sm:8px; --radius-md:14px;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
