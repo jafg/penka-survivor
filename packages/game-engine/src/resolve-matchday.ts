@@ -20,6 +20,21 @@ function isWin(match: Match, teamCode: string): boolean {
   );
 }
 
+/**
+ * Did this team win its match on this matchday?
+ *
+ * The same question resolution asks when it decides whether a pick survived, so
+ * it is answered here once and exported rather than re-derived from `outcome`
+ * wherever a screen wants to say "River ganó". `false` covers every way of not
+ * winning — a draw, a loss, a match with no outcome yet, and a team that is not
+ * playing — so callers who need to tell "not resolved" from "lost" have to
+ * establish that from the matchday, which is where it is recorded.
+ */
+export function didTeamWin(matches: readonly Match[], teamCode: string): boolean {
+  const match = findTeamMatch(matches, teamCode);
+  return match !== undefined && isWin(match, teamCode);
+}
+
 function islandEffect(
   entry: Entry,
   pick: PlayerPick | undefined,

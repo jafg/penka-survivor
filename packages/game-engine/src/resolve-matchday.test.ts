@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveMatchday } from './resolve-matchday';
+import { didTeamWin, resolveMatchday } from './resolve-matchday';
 import type { ResolveMatchdayInput } from './resolve-matchday';
 import {
   buildEntry,
@@ -329,5 +329,44 @@ describe('resolveMatchday', () => {
       expect(result.ok).toBe(true);
       expect(input.entries[0]).toEqual(buildEntry({ lives: 1 }));
     });
+  });
+});
+
+describe('didTeamWin', () => {
+  // The pick screen has to tell a player whether their pick survived, and that
+  // is the same question resolution asks. Exported so no app answers it twice.
+  it('is true for the home team of a home win', () => {
+    expect(didTeamWin([buildMatch({ outcome: 'home' })], 'HOME')).toBe(true);
+  });
+
+  it('is true for the away team of an away win', () => {
+    expect(didTeamWin([buildMatch({ outcome: 'away' })], 'AWAY')).toBe(true);
+  });
+
+  it('is false for the loser', () => {
+    expect(didTeamWin([buildMatch({ outcome: 'home' })], 'AWAY')).toBe(false);
+  });
+
+  it('is false for a draw, on both sides', () => {
+    const drawn = [buildMatch({ outcome: 'draw' })];
+    expect(didTeamWin(drawn, 'HOME')).toBe(false);
+    expect(didTeamWin(drawn, 'AWAY')).toBe(false);
+  });
+
+  it('is false while the match has no outcome', () => {
+    expect(didTeamWin([buildMatch({ outcome: null })], 'HOME')).toBe(false);
+  });
+
+  it('is false for a team that is not in the list', () => {
+    expect(didTeamWin([buildMatch()], 'OTHER')).toBe(false);
+  });
+
+  it('finds the team match among several', () => {
+    const matches = [
+      buildMatch({ id: 'match-1', outcome: 'home' }),
+      buildMatch({ id: 'match-2', homeTeamCode: 'RIV', awayTeamCode: 'BOC', outcome: 'away' }),
+    ];
+    expect(didTeamWin(matches, 'BOC')).toBe(true);
+    expect(didTeamWin(matches, 'RIV')).toBe(false);
   });
 });
