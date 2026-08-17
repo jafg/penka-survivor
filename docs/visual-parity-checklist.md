@@ -451,6 +451,13 @@ actual resolution in between.
 
 ## Accepted deviations (back office)
 
+- **`AdminKeyGate` and the top bar's "Cambiar clave" have no prototype counterpart.** The
+  prototype toggled between a mock backend and the real API and so never had to be
+  authorized. The real console sends a shared secret on every request, and a key the
+  deployment does not know left every panel empty with the reason visible only in the API
+  log. Built from the console's own tokens — `.panel` surface, `.btn` / `.btn--ghost`, the
+  `--danger` wash already used by `.btn--danger` — so it adds no new colours or radii.
+
 Recorded, not fixed. The first two were directed; the rest follow from the admin contract.
 
 | # | Prototype | App | Why |

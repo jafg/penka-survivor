@@ -36,6 +36,42 @@ body{
   padding:4px 10px;border-radius:999px;border:1px solid var(--border);
   font-family:var(--mono);font-size:11px;color:var(--fg-muted);
 }
+.key-button{
+  padding:4px 10px;background:none;border:1px solid var(--border);border-radius:999px;
+  cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--fg-muted);
+}
+.key-button:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ---------- admin key gate ---------- */
+.gate{max-width:520px;margin:0 auto;padding:64px 26px}
+.gate-card{
+  padding:26px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+}
+.gate-title{
+  margin:0 0 8px;font-family:"Barlow Condensed",sans-serif;font-weight:700;
+  text-transform:uppercase;font-size:20px;letter-spacing:.1em;
+}
+.gate-intro{margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--fg-muted)}
+.gate-error{
+  margin:0 0 16px;padding:10px 13px;border-radius:var(--radius-sm);
+  border:1px solid rgba(206,75,66,.55);background:rgba(206,75,66,.12);
+  font-size:12.5px;color:var(--danger);
+}
+.gate .field{display:block;margin-bottom:18px}
+.gate .field-label{
+  display:block;margin-bottom:6px;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--fg-muted);
+}
+.gate .field-input{
+  width:100%;padding:11px 13px;background:var(--bg);color:var(--fg);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  font-family:var(--mono);font-size:13px;
+}
+.gate .field-input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.gate-actions{display:flex;gap:10px;flex-wrap:wrap}
+.gate-aside{margin:20px 0 0;font-size:11.5px;line-height:1.6;color:var(--fg-dim)}
+.gate-aside code{font-family:var(--mono);color:var(--fg-muted)}
 
 /* ---------- layout ---------- */
 .layout{

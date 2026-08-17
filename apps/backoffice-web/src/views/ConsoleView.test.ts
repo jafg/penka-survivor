@@ -310,12 +310,17 @@ describe('the API console', () => {
   });
 
   it('marks a failed round trip and names the code the API sent', async () => {
-    server.use(http.get(apiUrl('/penkas'), () => apiError(401, 'unauthorized', 'Invalid admin key')));
+    // `internal`, not `unauthorized`: a 401 no longer leaves the console
+    // mounted — it puts up the admin key gate instead (see
+    // `components/AdminKeyGate.test.ts`), so this panel would not be on screen
+    // to assert against. Every other failure still lands here, which is what
+    // the panel is for.
+    server.use(http.get(apiUrl('/penkas'), () => apiError(500, 'internal', 'boom')));
 
     const { container } = await renderApp();
 
     const failed = container.querySelector('.log-entry.is-error');
-    expect(failed?.textContent).toContain('unauthorized');
-    expect(failed?.textContent).toContain('401');
+    expect(failed?.textContent).toContain('internal');
+    expect(failed?.textContent).toContain('500');
   });
 });

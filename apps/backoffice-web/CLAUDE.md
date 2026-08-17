@@ -29,10 +29,11 @@ the dev proxy is what makes same-origin requests work.
 - `api/client.ts` — the fetch wrapper, the `x-admin-key` header, and where the key is kept.
 - `api/endpoints.ts` — every admin call, typed from `@penka/contracts`.
 - `api/reset.ts` — the optional demo-reset button.
-- `stores/` — `pools`, `matchday`, `ops`, `console`, `toast` (Pinia).
+- `stores/` — `pools`, `matchday`, `ops`, `console`, `session`, `toast` (Pinia).
 - `game/resolve.ts` — the resolve precondition, asked of the engine (below).
 - `components/` — `PenkasPanel`, `ResultsPanel`, `MatchdayStatusPanel`, `OpsPanel`,
-  `ApiConsolePanel`, `StatusPill`; `views/ConsoleView.vue` is the console itself.
+  `ApiConsolePanel`, `StatusPill`, `AdminKeyGate`; `views/ConsoleView.vue` is the console
+  itself.
 
 ## Notes
 
@@ -58,6 +59,18 @@ the dev proxy is what makes same-origin requests work.
   re-spell it locally. A stored key (`penka.survivor.adminKey` in `localStorage`) beats the
   build-time one so a bundle can be pointed at another stack without a rebuild. An empty
   key is removed, never stored — it would shadow the fallback forever.
+- **`VITE_ADMIN_API_KEY` in `.env.development` must equal `ADMIN_API_KEY` in the repo's
+  root `.env`, byte for byte.** `timingSafeEqual` has no notion of "close enough". The two
+  drifted once and the console came up empty on every panel, with the only clue a 401 in
+  the API log — which is what `AdminKeyGate` now exists to answer.
+- **`stores/session.ts` is not a session.** There is no identity behind a shared secret, so
+  "signed in" is only ever the answer to the last request. The store listens on the
+  client's **traffic feed** rather than wrapping one endpoint, so any 401 from any panel
+  locks the console and no future endpoint can forget to report one. **Only a 401 locks** —
+  a 500 or an unreachable API is not an auth problem, and prompting for a key on one would
+  send an operator hunting for the wrong thing. A key the API rejects is never left in
+  `localStorage`: it would shadow the build-time fallback even after the deployment is
+  fixed.
 - **The polling profile is deployment-wide.** `PUT /admin/v1/polling-profile` writes one
   Redis key (`ops:pollingProfile`) that every penka's board reads. Present it as a load
   valve, not as a per-penka setting; players see the change on their next poll, and up to

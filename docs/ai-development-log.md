@@ -130,5 +130,14 @@ they explain why some rows have corrections attached.
   handles the two ordinary failures of `navigator.clipboard` — absent outside a secure
   context, and `NotAllowedError` when the click is not read as a gesture. It answers a
   boolean rather than throwing, because neither is a bug.
+- **The back office's 401 was configuration drift, not missing auth.**
+  `apps/backoffice-web/.env.development` shipped a `VITE_ADMIN_API_KEY` that no longer
+  matched the root `.env`'s `ADMIN_API_KEY`, and `timingSafeEqual` has no notion of "close
+  enough", so every panel came up empty with the only clue a 401 in the API console panel.
+  The value is fixed; `AdminKeyGate` is the answer to the question the console could not
+  previously ask. Making the key optional was the other option on the table and was
+  declined — it would have taken auth off every operator endpoint. `stores/session.ts`
+  listens on the client's traffic feed rather than probing, so the console's own first call
+  is what establishes the verdict, and only a 401 locks: a 500 is not an auth problem.
 - **Two things the reviews have not resolved**, carried here rather than quietly dropped:
   neither API registers CORS, and CI runs neither `pnpm build` nor `pnpm e2e`.

@@ -12,8 +12,11 @@ import {
  * operator does to a matchday happens on the same page, which is why there are
  * no tabs to route between.
  *
- * There is no auth guard either — the admin key is a header, not a session, and
- * an operator without one simply sees 401s in the API console.
+ * There is no auth guard either, and deliberately not: the admin key is a header
+ * on each request, not a session, so whether it works is only ever the answer to
+ * the last call — something a navigation guard cannot know before navigating.
+ * `App.vue` swaps in `AdminKeyGate` once a 401 has actually come back
+ * (`stores/session.ts`), which is a state of the API, not of the route.
  */
 const routes: RouteRecordRaw[] = [
   { path: '/', name: 'console', component: () => import('../views/ConsoleView.vue') },

@@ -2,8 +2,10 @@
 import { computed } from 'vue';
 import { PENKA_LOGO_DATA_URI } from '../assets/logo';
 import { useMatchdayStore } from '../stores/matchday';
+import { useSessionStore } from '../stores/session';
 
 const matchday = useMatchdayStore();
+const session = useSessionStore();
 
 /**
  * The prototype showed `tournament.name · Fecha N`; the admin API sends no
@@ -28,5 +30,10 @@ const context = computed(() =>
     <!-- The prototype toggled between "mock backend" and "API real". This app
          has no mock: it only ever talks to @penka/backoffice-api. -->
     <span class="mode-pill">API real</span>
+    <!-- Hidden while the gate is up: it is the way back TO the gate, and the
+         gate is already there. -->
+    <button v-if="!session.isLocked" class="key-button" type="button" @click="session.signOut()">
+      Cambiar clave
+    </button>
   </header>
 </template>
