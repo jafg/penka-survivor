@@ -80,6 +80,33 @@ export function matchday(status: MatchdayStatus = 'open'): Matchday {
   };
 }
 
+/**
+ * The league's whole calendar, the shape `GET /leagues/:leagueId/matchdays`
+ * answers. Three matchdays, because that is what the catalog materializes
+ * (`LOCK_OFFSET_MINUTES` has three entries) — and the count matters here: the
+ * console derives "which matchday am I on?" from this list, and the bug it
+ * exists to fix was walking one past the end.
+ *
+ * The default has matchday 1 resolved and the rest open, so the live matchday is
+ * number 2 — `MATCHDAY_NUMBER`, which the detail fixtures agree with.
+ *
+ * `leagueId` is a parameter because a second league is the other half of the
+ * reported bug, and a calendar carrying another league's derived ids would let a
+ * test pass while the store's id-keyed bookkeeping quietly missed.
+ */
+export function calendar(
+  statuses: MatchdayStatus[] = ['resolved', 'open', 'open'],
+  leagueId: string = LEAGUE_ID,
+): Matchday[] {
+  return statuses.map((status, index) => ({
+    id: matchdayId(leagueId, index + 1),
+    leagueId,
+    number: index + 1,
+    status,
+    lockAt: LOCK_AT,
+  }));
+}
+
 export function matchdayDetail(
   overrides: Partial<AdminMatchdayDetailResponse> = {},
 ): AdminMatchdayDetailResponse {

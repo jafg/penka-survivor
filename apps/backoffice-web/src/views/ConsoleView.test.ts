@@ -27,23 +27,48 @@ function resolveButton(): HTMLElement {
 }
 
 describe('the console at rest', () => {
-  it('opens on the matchday after the last resolved one', async () => {
-    // No route answers "which matchday am I on?", so the console derives it from
-    // the penka listing: one resolved matchday means number 2 is the live one.
+  it('reads the calendar, then opens on the first unresolved matchday', async () => {
+    // Three reads, in this order, and the order is the fix: the listing says
+    // which LEAGUE is in play, the calendar says which matchdays exist, and only
+    // then does the console name a number. It used to name one by arithmetic —
+    // `resolvedMatchdays + 1` — which walks off the end of a finished league.
     const urls = recordUrls();
 
     await renderApp();
 
-    expect(urls).toEqual([apiUrl('/penkas'), apiUrl('/leagues/copa-libertadores/matchdays/2')]);
+    expect(urls).toEqual([
+      apiUrl('/penkas'),
+      apiUrl('/leagues/copa-libertadores/matchdays'),
+      apiUrl('/leagues/copa-libertadores/matchdays/2'),
+    ]);
     expect(screen.getByText('copa-libertadores · Fecha 2')).toBeInTheDocument();
   });
 
   it('honours an explicit ?leagueId= and ?matchday=', async () => {
     const urls = recordUrls();
 
+    await renderApp('/?leagueId=premier-league&matchday=3');
+
+    expect(urls).toEqual([
+      apiUrl('/penkas'),
+      apiUrl('/leagues/premier-league/matchdays'),
+      // The league's live matchday, opened before the query string is honoured:
+      // a requested number is only ever a move WITHIN a calendar already read.
+      apiUrl('/leagues/premier-league/matchdays/2'),
+      apiUrl('/leagues/premier-league/matchdays/3'),
+    ]);
+    expect(screen.getByText('premier-league · Fecha 3')).toBeInTheDocument();
+  });
+
+  it('ignores a ?matchday= the league does not have, instead of 404-ing on it', async () => {
+    // A stale bookmark is not an operator error. The console lands on the live
+    // matchday and never asks for the one that was never materialized.
+    const urls = recordUrls();
+
     await renderApp('/?leagueId=premier-league&matchday=7');
 
-    expect(urls).toContain(apiUrl('/leagues/premier-league/matchdays/7'));
+    expect(urls).not.toContain(apiUrl('/leagues/premier-league/matchdays/7'));
+    expect(screen.getByText('premier-league · Fecha 2')).toBeInTheDocument();
   });
 
   it('summarises the matchday the way the prototype does', async () => {
@@ -305,6 +330,7 @@ describe('the API console', () => {
     );
     expect(paths).toEqual([
       '/admin/v1/leagues/copa-libertadores/matchdays/2',
+      '/admin/v1/leagues/copa-libertadores/matchdays',
       '/admin/v1/penkas',
     ]);
   });

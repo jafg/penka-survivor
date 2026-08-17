@@ -6,6 +6,7 @@ import { ApiError } from '../api/client';
 import {
   closeMatchday,
   getMatchday,
+  listLeagueMatchdays,
   resolveMatchday as postResolve,
   setResult,
 } from '../api/endpoints';
@@ -36,6 +37,20 @@ export const RESOLVE_POLL_ATTEMPTS = 4;
 export const useMatchdayStore = defineStore('matchday', () => {
   const leagueId = ref<string | null>(null);
   const number = ref<number | null>(null);
+
+  /**
+   * Every matchday the selected league actually has, from the API rather than
+   * from arithmetic.
+   *
+   * The console used to derive the live matchday as "one after the last resolved
+   * one", counted off the penka listing. That is right in the middle of a
+   * competition and wrong at both ends: a league whose matchdays are all
+   * resolved has no next one, so the console asked for a number that was never
+   * materialized and showed `matchday_not_found` — an error no operator action
+   * caused and none could clear. A number that came out of this list cannot do
+   * that.
+   */
+  const calendar = ref<Matchday[]>([]);
 
   const matchday = ref<Matchday | null>(null);
   const matches = ref<Match[]>([]);
@@ -75,9 +90,88 @@ export const useMatchdayStore = defineStore('matchday', () => {
   /** A resolved matchday answers 409 `already_resolved` to any further write. */
   const canLoadResults = computed(() => !isBusy.value && isLoaded.value && !isResolved.value);
 
+  /** A league nobody has played has no calendar, so there is nothing to work on. */
+  const hasCalendar = computed(() => calendar.value.length > 0);
+
+  /** Every matchday resolved: the competition is over, not broken. */
+  const isLeagueFinished = computed(
+    () => hasCalendar.value && calendar.value.every((entry) => entry.status === 'resolved'),
+  );
+
+  const position = computed(() =>
+    calendar.value.findIndex((entry) => entry.number === number.value),
+  );
+  const canGoPrevious = computed(() => position.value > 0);
+  const canGoNext = computed(
+    () => position.value >= 0 && position.value < calendar.value.length - 1,
+  );
+
   function select(nextLeagueId: string, nextNumber: number): void {
     leagueId.value = nextLeagueId;
     number.value = nextNumber;
+  }
+
+  /**
+   * Switches to a league: read its calendar, then open the matchday the operator
+   * is most likely to want — the first one still unresolved, or the last one
+   * when the league is finished.
+   *
+   * The order is the point. Nothing asks for a matchday until the API has said
+   * which ones exist.
+   */
+  async function openLeague(nextLeagueId: string): Promise<void> {
+    leagueId.value = nextLeagueId;
+    number.value = null;
+    calendar.value = [];
+    matchday.value = null;
+    matches.value = [];
+
+    try {
+      const response = await listLeagueMatchdays(nextLeagueId);
+      calendar.value = response.matchdays;
+    } catch (error) {
+      report(error, 'No pudimos cargar el calendario');
+      return;
+    }
+
+    const opening = calendar.value.find((entry) => entry.status !== 'resolved') ?? last();
+    if (opening === undefined) {
+      return;
+    }
+    number.value = opening.number;
+    await load();
+  }
+
+  /**
+   * Moves to another matchday of the SAME league. The number must be one the
+   * calendar carries — that is what makes a 404 unreachable by navigation rather
+   * than merely unlikely.
+   */
+  async function goTo(nextNumber: number): Promise<void> {
+    if (!calendar.value.some((entry) => entry.number === nextNumber)) {
+      return;
+    }
+    number.value = nextNumber;
+    await load();
+  }
+
+  async function goPrevious(): Promise<void> {
+    await step(-1);
+  }
+
+  async function goNext(): Promise<void> {
+    await step(1);
+  }
+
+  async function step(delta: number): Promise<void> {
+    const target = calendar.value[position.value + delta];
+    if (target !== undefined) {
+      await goTo(target.number);
+    }
+  }
+
+  function last(): Matchday | undefined {
+    return calendar.value[calendar.value.length - 1];
   }
 
   /**
@@ -94,6 +188,7 @@ export const useMatchdayStore = defineStore('matchday', () => {
       const detail = await getMatchday(league, md);
       matchday.value = detail.matchday;
       matches.value = detail.matches;
+      syncCalendar(detail.matchday);
       const ops = useOpsStore();
       ops.observe(detail.pollingProfile);
       ops.stamp();
@@ -199,6 +294,18 @@ export const useMatchdayStore = defineStore('matchday', () => {
     });
   }
 
+  /**
+   * Folds a freshly read matchday back into the calendar.
+   *
+   * Every read is a chance to learn that a status moved — a close the operator
+   * just made, or a resolution the workers finished while the console watched.
+   * Without this the picker would go on offering a resolved matchday as the live
+   * one until someone reloaded the whole console.
+   */
+  function syncCalendar(fresh: Matchday): void {
+    calendar.value = calendar.value.map((entry) => (entry.id === fresh.id ? fresh : entry));
+  }
+
   /** Every API refusal reaches the operator in the API's own words. */
   function report(error: unknown, fallback: string): void {
     useToastStore().error(error instanceof ApiError ? error.message : fallback);
@@ -207,11 +314,16 @@ export const useMatchdayStore = defineStore('matchday', () => {
   return {
     leagueId,
     number,
+    calendar,
     matchday,
     matches,
     isBusy,
     isAwaitingResolution,
     isLoaded,
+    hasCalendar,
+    isLeagueFinished,
+    canGoPrevious,
+    canGoNext,
     matchCount,
     resultsLoaded,
     pendingMatches,
@@ -221,6 +333,10 @@ export const useMatchdayStore = defineStore('matchday', () => {
     canClose,
     canLoadResults,
     select,
+    openLeague,
+    goTo,
+    goPrevious,
+    goNext,
     load,
     refresh,
     close,

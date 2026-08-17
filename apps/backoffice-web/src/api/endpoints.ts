@@ -1,10 +1,12 @@
 import {
+  AdminLeagueMatchdaysResponseSchema,
   AdminMatchdayDetailResponseSchema,
   AdminPoolsResponseSchema,
   CloseMatchdayResponseSchema,
   ResolveMatchdayResponseSchema,
   SetPollingProfileResponseSchema,
   SetResultResponseSchema,
+  type AdminLeagueMatchdaysResponse,
   type AdminMatchdayDetailResponse,
   type AdminPoolsResponse,
   type CloseMatchdayResponse,
@@ -32,6 +34,17 @@ import { apiRequest } from './client';
  */
 function matchdayPath(leagueId: string, number: number): string {
   return `/leagues/${encodeURIComponent(leagueId)}/matchdays/${encodeURIComponent(String(number))}`;
+}
+
+/**
+ * The league's whole calendar. Every other matchday call below takes a NUMBER,
+ * and this is the only route that says which numbers exist — so it is what keeps
+ * the console from asking for a matchday that was never materialized.
+ */
+export function listLeagueMatchdays(leagueId: string): Promise<AdminLeagueMatchdaysResponse> {
+  return apiRequest(`/leagues/${encodeURIComponent(leagueId)}/matchdays`, {
+    schema: AdminLeagueMatchdaysResponseSchema,
+  });
 }
 
 export function getMatchday(

@@ -171,7 +171,23 @@ tbody tr:hover{background:rgba(37,51,68,.35)}
 }
 .segmented button + button{border-left:1px solid var(--border)}
 .segmented button.is-selected{background:var(--accent);color:#241503;font-weight:700}
+.segmented button:disabled{opacity:.45;cursor:not-allowed}
 .field-note{margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--fg-muted)}
+
+/* ---------- competition selector ---------- */
+.selector{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end}
+.selector-field{display:flex;flex-direction:column;gap:6px}
+.selector-label{
+  font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-dim);
+}
+.selector-select{
+  min-width:190px;padding:8px 10px;background:var(--bg);color:var(--fg);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  font-family:inherit;font-size:12.5px;
+}
+.selector-select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.selector-select:disabled{opacity:.45;cursor:not-allowed}
+.selector-empty{font-size:12.5px;color:var(--fg-dim)}
 
 /* ---------- API console ---------- */
 .console{max-height:520px;overflow-y:auto;padding:0}

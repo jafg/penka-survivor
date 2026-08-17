@@ -5,19 +5,15 @@ import { ApiError } from '../api/client';
 import { listPools } from '../api/endpoints';
 import { useToastStore } from './toast';
 
-/** Which matchday the console opens on, when the listing knows enough to say. */
-export interface MatchdaySelection {
-  leagueId: string;
-  number: number;
-}
-
 /**
  * The operator listing: every penka in the deployment with its counters.
  *
- * It also answers a question the admin API has no route for — "which matchday am
- * I working on?" — because `resolvedMatchdays` is a count, so the matchday after
- * the last resolved one is the live one. A wrong guess is cheap and visible: the
- * console shows the number it picked and the URL can override it.
+ * It also answers which LEAGUES are worth showing, since the admin API has no
+ * route for that — a league matters to an operator exactly when a penka is being
+ * played on it. It deliberately does not answer which MATCHDAY: it used to, as
+ * `resolvedMatchdays + 1`, and that arithmetic walks off the end of a finished
+ * league and asks for a matchday that was never materialized. The numbers come
+ * from the league's own calendar now (`stores/matchday.ts`).
  */
 export const usePoolsStore = defineStore('pools', () => {
   const pools = ref<AdminPoolSummary[]>([]);
@@ -28,16 +24,19 @@ export const usePoolsStore = defineStore('pools', () => {
   );
 
   /**
-   * Taken from the first penka listed. With several leagues in play the operator
-   * picks explicitly; this only decides where the console lands.
+   * Every league with at least one penka on it, deduped, in listing order — the
+   * league switcher's whole source of truth. Not the catalog: a league nobody
+   * plays has no calendar and nothing for an operator to do.
    */
-  const suggestedSelection = computed<MatchdaySelection | null>(() => {
-    const first = pools.value[0];
-    if (first === undefined) {
-      return null;
-    }
-    return { leagueId: first.penka.leagueId, number: first.resolvedMatchdays + 1 };
-  });
+  const leaguesInPlay = computed(() => [
+    ...new Set(pools.value.map((pool) => pool.penka.leagueId)),
+  ]);
+
+  /**
+   * Where the console lands: the first penka's league. With several leagues in
+   * play the operator switches explicitly.
+   */
+  const suggestedLeagueId = computed<string | null>(() => leaguesInPlay.value[0] ?? null);
 
   async function load(): Promise<void> {
     try {
@@ -50,5 +49,5 @@ export const usePoolsStore = defineStore('pools', () => {
     }
   }
 
-  return { pools, picksReceived, suggestedSelection, load };
+  return { pools, picksReceived, leaguesInPlay, suggestedLeagueId, load };
 });

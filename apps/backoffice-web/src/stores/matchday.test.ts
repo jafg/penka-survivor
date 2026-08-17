@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { HttpResponse, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MatchdayStatus } from '@penka/contracts';
 import { RESOLVE_POLL_ATTEMPTS, RESOLVE_POLL_MS, useMatchdayStore } from './matchday';
 import { useOpsStore } from './ops';
 import { useToastStore } from './toast';
@@ -28,6 +29,170 @@ function serveMatchday(detail = fixtures.matchdayDetail()): void {
     http.get(apiUrl('/leagues/:leagueId/matchdays/:number'), () => HttpResponse.json(detail)),
   );
 }
+
+/**
+ * Serves a whole league: a calendar with the given statuses, and a detail route
+ * that AGREES with it. The two have to agree the way the real API's do — the
+ * store folds each detail read back into the calendar, so a handler that
+ * answered "open" for a matchday its own listing called "resolved" would be
+ * testing a state the deployment cannot produce.
+ */
+function serveLeague(...statuses: MatchdayStatus[]): void {
+  const days = fixtures.calendar(statuses);
+  server.use(
+    http.get(apiUrl('/leagues/:leagueId/matchdays'), () => HttpResponse.json({ matchdays: days })),
+    http.get(apiUrl('/leagues/:leagueId/matchdays/:number'), ({ params }) => {
+      const found = days.find((entry) => entry.number === Number(params['number']));
+      return HttpResponse.json(
+        fixtures.matchdayDetail(found === undefined ? {} : { matchday: found }),
+      );
+    }),
+  );
+}
+
+describe('matchdayStore · opening a league', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it('reads the calendar before it asks for any matchday', async () => {
+    // The bug this replaced: the console guessed a number from the penka
+    // listing and asked for it blind.
+    const urls = recordUrls();
+    const store = useMatchdayStore();
+
+    await store.openLeague(fixtures.LEAGUE_ID);
+
+    expect(urls[0]).toBe(apiUrl('/leagues/copa-libertadores/matchdays'));
+    expect(store.calendar.map((entry) => entry.number)).toEqual([1, 2, 3]);
+  });
+
+  it('lands on the first matchday that is not resolved', async () => {
+    serveLeague('resolved', 'open', 'open');
+    const store = useMatchdayStore();
+
+    await store.openLeague(fixtures.LEAGUE_ID);
+
+    expect(store.number).toBe(2);
+  });
+
+  it('lands on the LAST matchday once the whole league is resolved', async () => {
+    // The reported failure: with every matchday resolved the console asked for
+    // one past the end and showed `matchday_not_found`, which no operator
+    // action caused and none could clear.
+    const urls = recordUrls();
+    serveLeague('resolved', 'resolved', 'resolved');
+    const store = useMatchdayStore();
+
+    await store.openLeague(fixtures.LEAGUE_ID);
+
+    expect(store.number).toBe(3);
+    expect(store.isLeagueFinished).toBe(true);
+    expect(urls).not.toContain(apiUrl('/leagues/copa-libertadores/matchdays/4'));
+  });
+
+  it('asks for no matchday at all when the league has never been played', async () => {
+    const urls = recordUrls();
+    server.use(
+      http.get(apiUrl('/leagues/:leagueId/matchdays'), () => HttpResponse.json({ matchdays: [] })),
+    );
+    const store = useMatchdayStore();
+
+    await store.openLeague('la-liga');
+
+    expect(store.number).toBeNull();
+    expect(store.isLoaded).toBe(false);
+    expect(urls).toEqual([apiUrl('/leagues/la-liga/matchdays')]);
+  });
+
+  it('reports a failed calendar read in the API’s own words', async () => {
+    server.use(
+      http.get(apiUrl('/leagues/:leagueId/matchdays'), () =>
+        apiError(500, 'internal', 'Mongo is unreachable'),
+      ),
+    );
+    const store = useMatchdayStore();
+
+    await store.openLeague(fixtures.LEAGUE_ID);
+
+    expect(useToastStore().message).toBe('Mongo is unreachable');
+    expect(store.calendar).toEqual([]);
+  });
+
+  it('drops the previous league’s calendar when it switches', async () => {
+    const store = useMatchdayStore();
+    await store.openLeague(fixtures.LEAGUE_ID);
+
+    server.use(
+      http.get(apiUrl('/leagues/:leagueId/matchdays'), () => HttpResponse.json({ matchdays: [] })),
+    );
+    await store.openLeague('la-liga');
+
+    expect(store.leagueId).toBe('la-liga');
+    expect(store.calendar).toEqual([]);
+    expect(store.matchday).toBeNull();
+    expect(store.matches).toEqual([]);
+  });
+});
+
+describe('matchdayStore · moving through the calendar', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it('goes to another matchday of the same league without re-reading the calendar', async () => {
+    const store = useMatchdayStore();
+    await store.openLeague(fixtures.LEAGUE_ID);
+    const urls = recordUrls();
+
+    await store.goTo(1);
+
+    expect(store.number).toBe(1);
+    expect(urls).toEqual([apiUrl('/leagues/copa-libertadores/matchdays/1')]);
+  });
+
+  it('refuses a matchday the calendar does not have, rather than asking for it', async () => {
+    // This is the guard rail: the number can only come from the list the API
+    // itself answered, so a 404 is unreachable by navigation.
+    const store = useMatchdayStore();
+    await store.openLeague(fixtures.LEAGUE_ID);
+    const urls = recordUrls();
+
+    await store.goTo(4);
+
+    expect(store.number).toBe(2);
+    expect(urls).toEqual([]);
+  });
+
+  it('knows which way it can move', async () => {
+    const store = useMatchdayStore();
+    await store.openLeague(fixtures.LEAGUE_ID);
+
+    expect(store.number).toBe(2);
+    expect(store.canGoPrevious).toBe(true);
+    expect(store.canGoNext).toBe(true);
+
+    await store.goTo(1);
+    expect(store.canGoPrevious).toBe(false);
+
+    await store.goTo(3);
+    expect(store.canGoNext).toBe(false);
+  });
+
+  it('reflects a resolution in the calendar it already holds', async () => {
+    // Otherwise the picker would keep offering a resolved matchday as the live
+    // one until the whole console was reloaded.
+    const store = useMatchdayStore();
+    await store.openLeague(fixtures.LEAGUE_ID);
+    expect(store.number).toBe(2);
+    expect(store.calendar.find((entry) => entry.number === 2)?.status).toBe('open');
+
+    serveMatchday(fixtures.matchdayDetail({ matchday: fixtures.matchday('resolved') }));
+    await store.load();
+
+    expect(store.calendar.find((entry) => entry.number === 2)?.status).toBe('resolved');
+  });
+});
 
 describe('matchdayStore · loading', () => {
   beforeEach(() => {

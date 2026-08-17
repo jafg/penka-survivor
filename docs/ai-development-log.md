@@ -139,5 +139,22 @@ they explain why some rows have corrections attached.
   declined — it would have taken auth off every operator endpoint. `stores/session.ts`
   listens on the client's traffic feed rather than probing, so the console's own first call
   is what establishes the verdict, and only a 401 locks: a 500 is not an auth problem.
+- **The console could not reach two thirds of the deployment, and blamed the API for it.**
+  Setting results on a finished league answered
+  `admin/v1/leagues/copa-libertadores/matchdays/4 — matchday_not_found`, and penkas on a
+  second league had no route into the screen at all. One cause underneath both: nothing in
+  the admin API said which matchdays a league has, so the console *derived* the number as
+  `resolvedMatchdays + 1` from the penka listing and the league as "whichever penka was
+  listed first". Every league materializes exactly three matchdays
+  (`LOCK_OFFSET_MINUTES`), so a resolved league derived 4 — a matchday that was never
+  materialized, hence a 404 no operator action caused and none could clear. The fix is a
+  new read-only projection, `GET /admin/v1/leagues/:leagueId/matchdays`: whole matchdays so
+  a client can render each status without a detail read per matchday, `[]` rather than 404
+  for a league nobody plays, since the question has a true answer there. `stores/matchday.ts`
+  holds that calendar and refuses any number outside it, so the 404 is now unreachable by
+  navigation rather than merely unlikely, and `stores/pools.ts` answers `leaguesInPlay`
+  instead of a matchday it had no business computing. Three existing tests asserted the old
+  arithmetic and were rewritten to the new contract rather than deleted — they were right
+  about the code and the code was wrong.
 - **Two things the reviews have not resolved**, carried here rather than quietly dropped:
   neither API registers CORS, and CI runs neither `pnpm build` nor `pnpm e2e`.

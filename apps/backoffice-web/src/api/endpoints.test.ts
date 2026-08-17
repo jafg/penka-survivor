@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   closeMatchday,
   getMatchday,
+  listLeagueMatchdays,
   listPools,
   resolveMatchday,
   setPollingProfile,
@@ -18,6 +19,23 @@ function recordUrls(): string[] {
   server.events.on('request:start', ({ request }) => urls.push(request.url));
   return urls;
 }
+
+describe('listLeagueMatchdays', () => {
+  it('asks the league-scoped calendar route, with the id encoded once', async () => {
+    const urls = recordUrls();
+
+    await listLeagueMatchdays(fixtures.LEAGUE_ID);
+
+    expect(urls).toEqual([apiUrl('/leagues/copa-libertadores/matchdays')]);
+  });
+
+  it('answers whole matchdays, so a caller can tell a resolved one apart', async () => {
+    const response = await listLeagueMatchdays(fixtures.LEAGUE_ID);
+
+    expect(response.matchdays.map((entry) => entry.number)).toEqual([1, 2, 3]);
+    expect(response.matchdays[0]?.status).toBe('resolved');
+  });
+});
 
 describe('setResult', () => {
   it('percent-encodes the colon-bearing match id into the path', async () => {

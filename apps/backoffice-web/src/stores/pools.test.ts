@@ -43,27 +43,39 @@ describe('poolsStore', () => {
     expect(useToastStore().message).toBe('Invalid admin key');
   });
 
-  it('suggests the matchday to open on: the one after the last resolved', async () => {
-    // The admin API exposes no "current matchday" route, and `resolvedMatchdays`
-    // is a count — so one resolved matchday means number 2 is the live one.
+  it('suggests which LEAGUE to open, and leaves the matchday to the calendar', async () => {
+    // It used to answer a matchday too, as `resolvedMatchdays + 1`. That is
+    // right in the middle of a competition and wrong at the end of one: a league
+    // with every matchday resolved has no next number, and asking for it was the
+    // `matchday_not_found` an operator could not clear. The number now comes
+    // from the league's own calendar (`stores/matchday.ts`).
     const store = usePoolsStore();
 
     await store.load();
 
-    expect(store.suggestedSelection).toEqual({ leagueId: fixtures.LEAGUE_ID, number: 2 });
+    expect(store.suggestedLeagueId).toBe(fixtures.LEAGUE_ID);
   });
 
-  it('suggests the first matchday when nothing has been resolved yet', async () => {
+  it('names every league in play, so the console can offer them all', async () => {
+    // The reported failure: penkas on a second league were unreachable, because
+    // the console only ever looked at the first penka listed.
     server.use(
       http.get(apiUrl('/penkas'), () =>
-        HttpResponse.json({ pools: [fixtures.poolSummary({ resolvedMatchdays: 0 })] }),
+        HttpResponse.json({
+          pools: [
+            fixtures.poolSummary(),
+            fixtures.poolSummary({ penka: fixtures.penka({ id: 'p2', leagueId: 'copa-america' }) }),
+            // A second penka on the first league must not list it twice.
+            fixtures.poolSummary({ penka: fixtures.penka({ id: 'p3' }) }),
+          ],
+        }),
       ),
     );
     const store = usePoolsStore();
 
     await store.load();
 
-    expect(store.suggestedSelection).toEqual({ leagueId: fixtures.LEAGUE_ID, number: 1 });
+    expect(store.leaguesInPlay).toEqual([fixtures.LEAGUE_ID, 'copa-america']);
   });
 
   it('suggests nothing at all while no penka exists', async () => {
@@ -72,7 +84,8 @@ describe('poolsStore', () => {
 
     await store.load();
 
-    expect(store.suggestedSelection).toBeNull();
+    expect(store.suggestedLeagueId).toBeNull();
+    expect(store.leaguesInPlay).toEqual([]);
     expect(store.picksReceived).toBe(0);
   });
 });

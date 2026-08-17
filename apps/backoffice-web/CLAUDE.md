@@ -31,15 +31,29 @@ the dev proxy is what makes same-origin requests work.
 - `api/reset.ts` — the optional demo-reset button.
 - `stores/` — `pools`, `matchday`, `ops`, `console`, `session`, `toast` (Pinia).
 - `game/resolve.ts` — the resolve precondition, asked of the engine (below).
-- `components/` — `PenkasPanel`, `ResultsPanel`, `MatchdayStatusPanel`, `OpsPanel`,
-  `ApiConsolePanel`, `StatusPill`, `AdminKeyGate`; `views/ConsoleView.vue` is the console
-  itself.
+- `components/` — `PenkasPanel`, `ResultsPanel`, `MatchdaySelector`, `MatchdayStatusPanel`,
+  `OpsPanel`, `ApiConsolePanel`, `StatusPill`, `AdminKeyGate`; `views/ConsoleView.vue` is
+  the console itself.
 
 ## Notes
 
 - **The operator flow is close → results → resolve**, and the API enforces it: resolving an
   open matchday is 409 `matchday_not_locked` and publishes nothing. The console must not
   offer resolve as the first step, and must not "helpfully" close on the operator's behalf.
+- **Never derive a matchday NUMBER by arithmetic.** `GET /admin/v1/leagues/:leagueId/matchdays`
+  is the only route that says which numbers exist, and `stores/matchday.ts` holds that
+  calendar; `openLeague` reads it before it asks for any matchday, and `goTo` refuses a
+  number the calendar lacks. The console used to compute `resolvedMatchdays + 1` off the
+  penka listing, which is right mid-competition and wrong at the end of one: a league with
+  every matchday resolved has no next number, so the console asked for a matchday that was
+  never materialized and sat on `matchday_not_found` — an error no operator action caused
+  and none could clear. Every detail read is folded back into the calendar
+  (`syncCalendar`), so a close or a finished resolution moves the picker without a reload.
+- **Which leagues exist is a question about PENKAS, not about the catalog.** `leaguesInPlay`
+  in `stores/pools.ts` is the league switcher's only source: a league matters to an operator
+  exactly when a penka is being played on it, and the back office may not read the public
+  catalog. `?leagueId=&matchday=` still deep-links, but it is no longer the only way to
+  reach a second league — that gap is what made copa-america penkas unreachable.
 - **Resolve is queued, not done.** The response is `{ queued: true, matchdayId }`; the
   matchday becomes `resolved` only when `@penka/workers` has finished every penka on the
   league. Poll the matchday for its status — never report success off the 202-shaped body.

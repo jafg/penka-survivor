@@ -27,9 +27,24 @@ export function defaultHandlers(): HttpHandler[] {
   return [
     http.get(apiUrl('/penkas'), () => HttpResponse.json({ pools: fixtures.pools() })),
 
-    http.get(apiUrl('/leagues/:leagueId/matchdays/:number'), () =>
-      HttpResponse.json(fixtures.matchdayDetail()),
+    // The calendar, and the reason the console never asks for a matchday number
+    // that was never materialized.
+    http.get(apiUrl('/leagues/:leagueId/matchdays'), ({ params }) =>
+      HttpResponse.json({ matchdays: fixtures.calendar(undefined, String(params['leagueId'])) }),
     ),
+
+    // Answered out of the SAME calendar the route above serves. The console folds
+    // every detail read back into the calendar it holds, so two handlers telling
+    // different stories about one matchday would test a state no deployment can
+    // reach.
+    http.get(apiUrl('/leagues/:leagueId/matchdays/:number'), ({ params }) => {
+      const entry = fixtures
+        .calendar(undefined, String(params['leagueId']))
+        .find((day) => day.number === Number(params['number']));
+      return HttpResponse.json(
+        fixtures.matchdayDetail(entry === undefined ? {} : { matchday: entry }),
+      );
+    }),
 
     http.post(apiUrl('/matches/:matchId/result'), async ({ params, request }) => {
       const body = (await request.json()) as { outcome: 'home' | 'draw' | 'away' };
