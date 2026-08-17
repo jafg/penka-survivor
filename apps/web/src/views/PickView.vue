@@ -137,7 +137,15 @@ const confirmLabel = computed(() => {
   if (selected === submitted) {
     return `Elegiste ${catalog.teamName(selected)}`;
   }
-  return myEntry.isSubmitting ? 'Confirmando…' : `Confirmar ${catalog.teamName(selected)}`;
+  if (myEntry.isSubmitting) {
+    return 'Confirmando…';
+  }
+  // "Cambiar" once a pick is in, because the tap that got the player here
+  // REPLACED one — the screen holds a single selection, and calling that
+  // "Confirmar" is what makes a deliberate swap look like a lost pick.
+  return submitted === null
+    ? `Confirmar ${catalog.teamName(selected)}`
+    : `Cambiar a ${catalog.teamName(selected)}`;
 });
 
 const canConfirm = computed(() => {
@@ -193,9 +201,17 @@ async function confirm(): Promise<void> {
       attribute rather than a new class so `base.css` stays the prototype's
       stylesheet verbatim.
     -->
+    <!--
+      The prototype's copy said "Elegí un equipo que gane", which is true and
+      reads as one pick PER PARTIDO in front of six fixtures with two tappable
+      teams each. One team per fecha is the whole game — `SubmitPickRequest`
+      carries a single `teamCode` — so the screen says "un solo equipo de toda la
+      fecha" and adds the part players actually get wrong: the other matches do
+      not touch their entry.
+    -->
     <p class="screen-intro" style="margin-top: 16px">
-      Elegí un equipo que gane. Si empata o pierde, perdés una tarjeta. No podés repetir equipo en
-      todo el torneo.
+      Elegí un solo equipo de toda la fecha. Si gana, seguís; si empata o pierde, perdés una
+      tarjeta. Los demás partidos no te afectan. No podés repetir equipo en todo el torneo.
     </p>
 
     <LockBar :is-locked="isLocked" :countdown="formatted" />

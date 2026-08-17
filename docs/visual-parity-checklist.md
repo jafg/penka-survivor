@@ -201,6 +201,14 @@ prototype: the real API, the game engine, or a fact the prototype's mock hid.
   `@penka/game-engine` — the same function the API runs — accepts their picks, because
   each hit is worth a point on the island table, which the prototype's own notice copy
   says out loud. The rule wins; the greyed-out state is kept for `islandEnabled: false`.
+- **The pick intro and the action bar say the pick is ONE team per fecha.** The prototype's
+  `Elegí un equipo que gane…` is true and was misread in use: six fixtures with two
+  tappable teams each read as a form to fill in, and tapping a second team looked like the
+  first had been lost rather than replaced. The intro now says `un solo equipo de toda la
+  fecha` and adds `Los demás partidos no te afectan`, and the action bar says
+  **`Cambiar a X`** rather than `Confirmar X` once a pick is already in. The rule is the
+  contract's — `SubmitPickRequest` carries a single `teamCode` — so this is the prototype's
+  copy losing to the domain, not a new behaviour.
 - **No scorelines.** The prototype printed `2–0` / `0–2` / `1–1` from a match outcome. It
   invented them: neither the mock nor the real API carries goals. The app prints the
   outcome in words (`Ganó local`, `Ganó visitante`, `Empate`) rather than a number nobody

@@ -156,5 +156,15 @@ they explain why some rows have corrections attached.
   instead of a matchday it had no business computing. Three existing tests asserted the old
   arithmetic and were rewritten to the new contract rather than deleted — they were right
   about the code and the code was wrong.
+- **The pick screen was read as one pick per PARTIDO.** Nothing was wrong with it —
+  `SubmitPickRequest` carries a single `teamCode`, `validatePick` takes one team, and
+  tapping a second one correctly replaced the first — but a screen that is right and
+  misread is still a defect in the copy. Six fixtures, two tappable teams each, and an
+  intro that said "Elegí un equipo que gane" left a player believing they had to predict
+  every match and were losing the ones they could not reach. The fix is copy only: the
+  intro names the scope (`un solo equipo de toda la fecha`) and the consequence players
+  actually get wrong (`Los demás partidos no te afectan`), and the action bar says
+  `Cambiar a X` once a pick exists, so a deliberate swap stops looking like a lost
+  selection. No rule moved; the engine was consulted to confirm none should.
 - **Two things the reviews have not resolved**, carried here rather than quietly dropped:
   neither API registers CORS, and CI runs neither `pnpm build` nor `pnpm e2e`.

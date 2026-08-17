@@ -156,6 +156,34 @@ describe('PickView', () => {
     expect(screen.getByText('Ya usado')).toBeInTheDocument();
   });
 
+  it('says the pick is ONE team for the whole matchday, not one per match', async () => {
+    // Six fixtures, each with two tappable teams, read as a form to fill in —
+    // and tapping a second team looks like the first was lost rather than
+    // replaced. The rule is one team per matchday (`SubmitPickRequest` carries a
+    // single `teamCode`), so the screen has to say so before the cards.
+    openMatchday();
+    await open();
+
+    expect(screen.getByText(/Elegí un solo equipo de toda la fecha/)).toBeInTheDocument();
+  });
+
+  it('offers to CHANGE a pick rather than confirm a second one', async () => {
+    // The same tap means two different things depending on whether a pick is
+    // already in: with one confirmed, touching another team is a swap. Calling
+    // it "Confirmar" is what makes the swap read as an accident.
+    openMatchday();
+    server.use(
+      http.get(apiUrl('/penkas/:penkaId/me'), () =>
+        HttpResponse.json({ myEntry: fixtures.myEntry({ myPick: 'RIV' }) }),
+      ),
+    );
+    await open();
+
+    await userEvent.click(screen.getByRole('button', { name: /Boca Juniors/ }));
+
+    expect(screen.getByRole('button', { name: 'Cambiar a Boca Juniors' })).toBeEnabled();
+  });
+
   it('shows what the player already confirmed instead of asking again', async () => {
     openMatchday();
     server.use(
