@@ -80,6 +80,26 @@ export const AdminPoolsResponseSchema = StrictObject({
 });
 export type AdminPoolsResponse = Static<typeof AdminPoolsResponseSchema>;
 
+/**
+ * GET /admin/v1/leagues/:leagueId/matchdays — the league's whole calendar.
+ *
+ * The route exists because every other matchday route takes a NUMBER, and until
+ * a console has seen the calendar it can only guess one. Guessing is what it did:
+ * "the matchday after the last resolved one" walks off the end of a finished
+ * league and asks for a matchday that was never materialized, which is a 404 the
+ * operator did nothing to cause and cannot navigate out of.
+ *
+ * Whole matchdays rather than numbers, because the console has to render each
+ * one's status to grey out the ones already resolved — and a list of integers
+ * would send it back for a detail read per matchday just to draw a picker.
+ *
+ * The league is named once, in the path, so the body does not repeat it.
+ */
+export const AdminLeagueMatchdaysResponseSchema = StrictObject({
+  matchdays: Type.Array(MatchdaySchema),
+});
+export type AdminLeagueMatchdaysResponse = Static<typeof AdminLeagueMatchdaysResponseSchema>;
+
 // GET /admin/v1/leagues/:leagueId/matchdays/:number
 export const AdminMatchdayDetailResponseSchema = StrictObject({
   matchday: MatchdaySchema,

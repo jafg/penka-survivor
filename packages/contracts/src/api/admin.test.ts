@@ -2,6 +2,7 @@ import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
 import {
   ADMIN_KEY_HEADER,
+  AdminLeagueMatchdaysResponseSchema,
   AdminMatchdayDetailResponseSchema,
   AdminPoolsResponseSchema,
   CloseMatchdayResponseSchema,
@@ -135,6 +136,38 @@ describe('admin schemas', () => {
     expect(Value.Check(SetResultResponseSchema, { match: { ...fx.match, outcome: 'away' } })).toBe(
       false,
     );
+  });
+
+  it('lists a league’s matchdays, which is how a console knows the calendar ends', () => {
+    // Without this the only way to ask for a matchday is to guess its number,
+    // and guessing one past the last is a 404 the operator did nothing to cause.
+    expect(
+      Value.Check(AdminLeagueMatchdaysResponseSchema, {
+        matchdays: [fx.matchday, { ...fx.matchday, id: matchdayId('copa-libertadores', 2) }],
+      }),
+    ).toBe(true);
+    // A league nobody plays has no materialized calendar, and that is an answer,
+    // not a failure.
+    expect(Value.Check(AdminLeagueMatchdaysResponseSchema, { matchdays: [] })).toBe(true);
+  });
+
+  it('carries whole matchdays in the listing, not bare numbers', () => {
+    // The console greys out a resolved matchday and refuses to reopen it, so the
+    // status has to travel with the number. A list of integers would send it back
+    // for a detail read per matchday just to render a picker.
+    expect(Value.Check(AdminLeagueMatchdaysResponseSchema, { matchdays: [1, 2, 3] })).toBe(false);
+    expect(
+      Value.Check(AdminLeagueMatchdaysResponseSchema, {
+        matchdays: [fx.omit(fx.matchday, 'status')],
+      }),
+    ).toBe(false);
+    expect(Value.Check(AdminLeagueMatchdaysResponseSchema, {})).toBe(false);
+    expect(
+      Value.Check(AdminLeagueMatchdaysResponseSchema, {
+        matchdays: [fx.matchday],
+        leagueId: 'copa-libertadores',
+      }),
+    ).toBe(false);
   });
 
   it('reports the live polling profile alongside a matchday', () => {

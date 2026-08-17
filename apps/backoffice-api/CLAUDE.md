@@ -103,6 +103,7 @@ All under `/admin/v1`, all behind `X-Admin-Key`.
 | Endpoint                                        | Notes                                          |
 | ----------------------------------------------- | ---------------------------------------------- |
 | `GET /penkas`                                   | every penka with entries alive/island, picks in for the current matchday, resolved matchdays |
+| `GET /leagues/:leagueId/matchdays`              | the league's whole calendar, in playing order; `[]` for a league nobody plays |
 | `GET /leagues/:leagueId/matchdays/:number`      | matchday + matches + the cadence being served  |
 | `POST /matches/:matchId/result`                 | `{ outcome }` → sync write, `pendingMatches`, `readyToResolve` |
 | `POST /leagues/:leagueId/matchdays/:number/close`   | sync lock; idempotent; 409 `already_resolved`  |
@@ -112,6 +113,14 @@ All under `/admin/v1`, all behind `X-Admin-Key`.
 - **Matchdays are addressed by league and number, never by id**: the document id is
   derived from exactly those two values (`matchdayId` in `@penka/contracts`), so taking an
   id from the caller would let an operator address a document belonging to another league.
+  That addressing is why the **calendar listing exists**: every other matchday route takes
+  a number, and until a client has seen the calendar it can only guess one. The console
+  guessed — "the matchday after the last resolved one" — and walked off the end of a
+  finished league into a `matchday_not_found` no operator action caused. The listing
+  answers **whole matchdays**, not bare numbers, so a client can render each one's status
+  without a detail read per matchday; and it answers `[]`, not 404, for a league nobody
+  plays, because "which matchdays does this league have?" has a true answer there and the
+  client asks before it knows whether the league is in play at all.
 - **A match is addressed by its id**, because that is what the operator has in hand from
   the matchday listing. Those ids carry colons (`copa-libertadores:md1:RIV-ATN`), so
   **clients must `encodeURIComponent` the id into the path**. The route does not decode it

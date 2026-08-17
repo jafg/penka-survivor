@@ -16,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { Value } from '@sinclair/typebox/value';
 import {
+  AdminLeagueMatchdaysResponseSchema,
   AdminMatchdayDetailResponseSchema,
   AdminPoolsResponseSchema,
   CloseMatchdayResponseSchema,
@@ -74,6 +75,7 @@ function codeOf(response: { json: <T>() => T }): string {
 describe('admin authentication', () => {
   const GUARDED = [
     { method: 'GET' as const, url: '/admin/v1/penkas' },
+    { method: 'GET' as const, url: '/admin/v1/leagues/copa-america/matchdays' },
     { method: 'GET' as const, url: '/admin/v1/leagues/copa-america/matchdays/1' },
     {
       method: 'POST' as const,
@@ -159,6 +161,107 @@ describe('GET /admin/v1/penkas', () => {
       picksReceived: 1,
       resolvedMatchdays: 0,
     });
+  });
+});
+
+/**
+ * The one describe that does NOT own its league. It only reads, and it seeds
+ * copa-america itself so it does not depend on the pools suite above having run
+ * — materializing a calendar is idempotent, so the second penka finds the first
+ * one's fixtures. Nothing here asserts a status another suite could move.
+ */
+describe('GET /admin/v1/leagues/:leagueId/matchdays', () => {
+  beforeAll(async () => {
+    await seedLeague('copa-america', 'calendar-owner');
+  });
+
+  it('lists the league’s whole calendar, in playing order', async () => {
+    const response = await admin.inject({
+      method: 'GET',
+      url: '/admin/v1/leagues/copa-america/matchdays',
+      headers: adminHeaders(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<{ matchdays: { id: string; number: number; status: string }[] }>();
+    expect(Value.Check(AdminLeagueMatchdaysResponseSchema, body)).toBe(true);
+    // Sorted by number, not by whatever order Mongo hands them back: the console
+    // draws this straight into a picker.
+    expect(body.matchdays.map((entry) => entry.number)).toEqual([1, 2, 3]);
+    expect(body.matchdays[0]?.id).toBe(matchdayId('copa-america', 1));
+  });
+
+  it('carries the status the detail route reports for the same matchday', async () => {
+    // The console greys out a resolved matchday from THIS listing alone, so the
+    // two routes have to agree. Cross-checked rather than asserted flat, because
+    // a status is exactly the thing another operator action moves.
+    const [listing, detail] = await Promise.all([
+      admin.inject({
+        method: 'GET',
+        url: '/admin/v1/leagues/copa-america/matchdays',
+        headers: adminHeaders(),
+      }),
+      admin.inject({
+        method: 'GET',
+        url: '/admin/v1/leagues/copa-america/matchdays/1',
+        headers: adminHeaders(),
+      }),
+    ]);
+
+    const listed = listing
+      .json<{ matchdays: { number: number; status: string }[] }>()
+      .matchdays.find((entry) => entry.number === 1);
+    const detailed = detail.json<{ matchday: { status: string } }>().matchday;
+    expect(listed?.status).toBe(detailed.status);
+  });
+
+  it('is how a console learns the calendar ENDS, rather than guessing past it', async () => {
+    // The listing is the upper bound: asking for one past the last number is the
+    // 404 this route exists to keep an operator from ever reaching.
+    const listing = await admin.inject({
+      method: 'GET',
+      url: '/admin/v1/leagues/copa-america/matchdays',
+      headers: adminHeaders(),
+    });
+    const numbers = listing
+      .json<{ matchdays: { number: number }[] }>()
+      .matchdays.map((entry) => entry.number);
+    const past = Math.max(...numbers) + 1;
+
+    const response = await admin.inject({
+      method: 'GET',
+      url: `/admin/v1/leagues/copa-america/matchdays/${past}`,
+      headers: adminHeaders(),
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(codeOf(response)).toBe('matchday_not_found');
+  });
+
+  it('answers an empty calendar for a league nobody plays, which is not an error', async () => {
+    // Unlike the detail route: "which matchdays does this league have?" has a
+    // true answer — none — and a 404 would make the console treat a league it
+    // has never seen played as a broken request.
+    const response = await admin.inject({
+      method: 'GET',
+      url: '/admin/v1/leagues/no-such-league/matchdays',
+      headers: adminHeaders(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<{ matchdays: unknown[] }>().matchdays).toEqual([]);
+  });
+
+  it('never leaks another league’s calendar', async () => {
+    const response = await admin.inject({
+      method: 'GET',
+      url: '/admin/v1/leagues/copa-america/matchdays',
+      headers: adminHeaders(),
+    });
+
+    const body = response.json<{ matchdays: { leagueId: string }[] }>();
+    expect(body.matchdays.length).toBeGreaterThan(0);
+    expect(body.matchdays.every((entry) => entry.leagueId === 'copa-america')).toBe(true);
   });
 });
 

@@ -82,12 +82,16 @@ async function registeredRoutes(app: FastifyInstance): Promise<string[]> {
 }
 
 describe('adminRoutes surface', () => {
-  it('exposes the six operator endpoints and nothing else', async () => {
+  it('exposes the seven operator endpoints and nothing else', async () => {
     const app = appWithDecorators(['db', 'redis', 'publisher', 'requireAdmin']);
 
     const routes = await registeredRoutes(app);
 
     expect(routes.sort()).toEqual([
+      // The calendar listing: the only route that says which matchday NUMBERS a
+      // league has, and therefore the only thing standing between a console and
+      // a request for one that was never materialized.
+      'GET /admin/v1/leagues/:leagueId/matchdays',
       'GET /admin/v1/leagues/:leagueId/matchdays/:number',
       'GET /admin/v1/penkas',
       'POST /admin/v1/leagues/:leagueId/matchdays/:number/close',

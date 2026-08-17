@@ -2,11 +2,13 @@ import type { FastifyBaseLogger, FastifyPluginAsync } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { Db } from 'mongodb';
 import {
+  AdminLeagueMatchdaysResponseSchema,
   AdminMatchdayDetailResponseSchema,
   AdminPoolsResponseSchema,
   CloseMatchdayResponseSchema,
   ErrorCodes,
   LeagueMatchdayParamsSchema,
+  LeagueParamsSchema,
   MatchParamsSchema,
   POLLING_PROFILE_KEY,
   ResolveMatchdayResponseSchema,
@@ -141,6 +143,32 @@ export const adminRoutes: FastifyPluginAsync = async (instance) => {
         .toArray();
 
       return { pools: summarizePools({ penkas, entries, matchdays, picks }) };
+    },
+  );
+
+  app.get(
+    '/leagues/:leagueId/matchdays',
+    {
+      preHandler: app.requireAdmin,
+      schema: {
+        params: LeagueParamsSchema,
+        response: { 200: AdminLeagueMatchdaysResponseSchema },
+      },
+    },
+    async (request) => {
+      // Sorted here rather than in the console: the order is a property of a
+      // calendar, and every client would otherwise re-sort what Mongo happened
+      // to return.
+      const matchdays = await matchdaysCollection(app.db)
+        .find({ leagueId: request.params.leagueId })
+        .sort({ number: 1 })
+        .toArray();
+
+      // No 404 for an empty result, unlike the detail route below. "Which
+      // matchdays does this league have?" has a true answer for a league nobody
+      // plays — none — and the console asks this before it knows whether a
+      // league is in play at all.
+      return { matchdays: matchdays.map(toMatchday) };
     },
   );
 
