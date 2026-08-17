@@ -153,7 +153,7 @@ body{
 .pool-card.is-current{border-color:var(--accent)}
 .pool-open{display:block;width:100%;padding:0;text-align:left;cursor:pointer;
   background:none;border:0;font-family:inherit;color:inherit}
-.pool-name{margin-bottom:4px;font-size:16px;font-weight:700}
+.pool-name{margin-bottom:4px;font-size:16px;font-weight:700;display:block}
 .pool-meta{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--fg-muted)}
 .join-code{display:flex;gap:8px;align-items:center;margin-top:12px;padding:7px 11px;cursor:pointer;
   background:none;border:1px dashed var(--border);border-radius:999px;
