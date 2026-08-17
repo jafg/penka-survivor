@@ -1,10 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { render, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MyPenkaItem } from '@penka/contracts';
 import * as fixtures from '../test-support/fixtures';
 import { useCatalogStore } from '../stores/catalog';
+import { useToastStore } from '../stores/toast';
 import PenkaCard from './PenkaCard.vue';
 
 function mount(item: MyPenkaItem, isCurrent = false) {
@@ -15,6 +16,10 @@ describe('PenkaCard', () => {
   beforeEach(async () => {
     setActivePinia(createPinia());
     await useCatalogStore().loadLeagues();
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard');
   });
 
   it('names the penka and the competition it runs on', () => {
@@ -67,8 +72,41 @@ describe('PenkaCard', () => {
   it('hands its penka id up when picked', async () => {
     const { emitted } = mount(fixtures.myPenkaItem());
 
-    await userEvent.click(screen.getByRole('button'));
+    await userEvent.click(screen.getByRole('button', { name: /Survivor de la oficina/ }));
 
     expect(emitted()['open']).toEqual([[fixtures.PENKA_ID]]);
+  });
+
+  describe('the invite code', () => {
+    it('shows it, so a player can pass it on without creating the penka again', () => {
+      // Before this, the code was announced once in a toast at creation and was
+      // then unreachable: nothing in the app printed it again.
+      mount(fixtures.myPenkaItem({ penka: fixtures.penka({ joinCode: '4821' }) }));
+
+      expect(screen.getByText('4821')).toBeInTheDocument();
+    });
+
+    it('copies it to the clipboard when tapped', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      mount(fixtures.myPenkaItem({ penka: fixtures.penka({ joinCode: '4821' }) }));
+
+      await userEvent.click(screen.getByRole('button', { name: /4821/ }));
+
+      expect(writeText).toHaveBeenCalledWith('4821');
+      expect(useToastStore().message).toContain('4821');
+    });
+
+    it('does not open the penka — copying and entering are different intents', async () => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+      });
+      const { emitted } = mount(fixtures.myPenkaItem({ penka: fixtures.penka({ joinCode: '4821' }) }));
+
+      await userEvent.click(screen.getByRole('button', { name: /4821/ }));
+
+      expect(emitted()['open']).toBeUndefined();
+    });
   });
 });

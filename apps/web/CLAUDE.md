@@ -54,6 +54,11 @@ registers no CORS, so the dev proxy is the only thing that makes same-origin req
   lowest-numbered *unresolved* matchday, so `matchday` increments, `isResolved` goes back
   to `false`, picks are `null` again, and the matchday that just finished appears in
   `board.history`. Do not treat `isResolved` as "the last matchday is done".
+- **The join code is read off `MyPenkaItem.penka.joinCode`, never held in local state.**
+  `PenkaCard` prints it and copies it on tap (`composables/use-clipboard.ts`). That
+  composable answers a boolean rather than throwing, because `navigator.clipboard` is
+  undefined outside a secure context and the browser can still refuse the write — both are
+  ordinary states, and the failure toast names the code, which is on screen anyway.
 - **`game/pick.ts` is an adapter, not a rule.** `validateMyPick` lines up arguments for
   `validatePick` in `@penka/game-engine` — the same function the API runs — and decides
   nothing. Where the prototype and the engine disagree, the engine wins: an island player

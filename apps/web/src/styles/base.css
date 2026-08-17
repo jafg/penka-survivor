@@ -146,13 +146,24 @@ body{
 .history-headline{display:block;font-weight:700;color:var(--fg)}
 .history-detail{display:block;margin-top:2px;font-size:11.5px;color:var(--fg-muted)}
 
-.pool-card{display:block;width:100%;margin-bottom:9px;padding:16px;text-align:left;cursor:pointer;
+.pool-card{display:block;width:100%;margin-bottom:9px;padding:16px;text-align:left;
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);
   font-family:inherit;color:inherit}
 .pool-card:hover{border-color:var(--accent)}
 .pool-card.is-current{border-color:var(--accent)}
+.pool-open{display:block;width:100%;padding:0;text-align:left;cursor:pointer;
+  background:none;border:0;font-family:inherit;color:inherit}
 .pool-name{margin-bottom:4px;font-size:16px;font-weight:700}
 .pool-meta{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--fg-muted)}
+.join-code{display:flex;gap:8px;align-items:center;margin-top:12px;padding:7px 11px;cursor:pointer;
+  background:none;border:1px dashed var(--border);border-radius:999px;
+  font-family:inherit;font-size:12px;color:var(--fg-muted)}
+.join-code:hover{border-color:var(--accent);border-style:solid}
+.join-code-label{text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+.join-code-value{font-family:"Barlow Condensed",sans-serif;font-size:16px;letter-spacing:.14em;
+  font-weight:700;color:var(--fg)}
+.join-code-hint{margin-left:auto;font-size:11px;color:var(--fg-muted)}
+.join-code:hover .join-code-hint{color:var(--accent)}
 .badge{padding:3px 8px;border-radius:999px;border:1px solid var(--border);
   font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-muted)}
 .badge--alive{border-color:rgba(107,163,82,.55);color:var(--positive)}

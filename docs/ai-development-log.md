@@ -123,5 +123,12 @@ they explain why some rows have corrections attached.
   `POLLING_PROFILE_KEY` and the id builders already followed. Test first, as always: the
   constant's two assertions in `packages/contracts/src/api/admin.test.ts` went red before
   the export existed.
+- **The join code had exactly one moment of visibility** — the toast fired when a penka was
+  created — so a player who wanted to invite someone a week later had nowhere to read it.
+  It was already on the wire (`PenkaSchema.joinCode`, hence `MyPenkaItem.penka`), so this
+  cost no contract change: `PenkaCard` grew a second control and `composables/use-clipboard.ts`
+  handles the two ordinary failures of `navigator.clipboard` — absent outside a secure
+  context, and `NotAllowedError` when the click is not read as a gesture. It answers a
+  boolean rather than throwing, because neither is a bug.
 - **Two things the reviews have not resolved**, carried here rather than quietly dropped:
   neither API registers CORS, and CI runs neither `pnpm build` nor `pnpm e2e`.

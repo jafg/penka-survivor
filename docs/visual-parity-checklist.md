@@ -245,6 +245,13 @@ Added by the parity loop:
 - **History detail joins the last name with `y`.** The mock handed over a finished
   sentence; the app builds it from `eliminated: string[]`, and a Spanish list of names ends
   in `y` rather than a comma. Mechanical consequence of composing the sentence client-side.
+- **`PenkaCard` carries a join-code chip the prototype has no equivalent for, and is a
+  `<div>` rather than a `<button>`.** `MyPenkaItem.penka.joinCode` was already on the wire
+  and the app printed it exactly once, in the toast fired at creation — so a player who
+  wanted to invite someone a week later had nowhere to read it. The card now holds two
+  independent actions, enter and copy, and a button inside a button is invalid HTML, so the
+  card became the frame and `.pool-open` took over the tap target. Same tokens, same
+  radii; the chip reuses the dashed-border treatment already in the sheet.
 - **The header poll indicator reads `—` on the pools screen.** The app polls the board, and
   there is no board outside a penka, so `nextPollInSec` has no value there yet. The
   prototype's mock answered a poll interval globally. Inside a penka both panels read
